@@ -5,10 +5,10 @@ Enterprise-grade Machine Learning Operations platform designed for compliance, q
 ## Overview
 
 This platform provides a collaborative, reproducible, and monitored ML workflow that enables enterprises to:
-- Reduce time-to-market by 40%
-- Improve model accuracy by 25%
-- Save 30% on operational costs
-- Boost team productivity by 50%
+- **Reduce time-to-market by 40%**
+- **Improve model accuracy by 25%**
+- **Save 30% on operational costs**
+- **Boost team productivity by 50%**
 
 ## Architecture
 
@@ -65,63 +65,135 @@ The platform follows a modular, microservices-based architecture with the follow
 - A/B testing capabilities
 - Edge deployment support
 
-## Quick Start
+## 🚀 Quick Start with Demo LLM
 
-### Prerequisites
+We've included a complete demo LLM model to showcase the platform capabilities!
+
+### One-Command Demo
+
+```bash
+# Run the complete MLOps pipeline demo
+./scripts/run-demo-pipeline.sh
+```
+
+This will:
+1. ✅ Build and deploy the demo LLM model
+2. ✅ Execute the complete training pipeline
+3. ✅ Register the model in the registry
+4. ✅ Deploy to staging environment
+5. ✅ Set up monitoring and alerts
+6. ✅ Provide access to all dashboards
+
+### Step-by-Step Setup
+
+#### 1. Prerequisites
 - Kubernetes cluster (1.21+)
 - Docker
 - kubectl
 - Helm 3.0+
 
-### Development Setup
+#### 2. Deploy MLOps Platform
 
-1. Clone the repository:
 ```bash
+# Clone and setup
 git clone <repository-url>
 cd cirruslabs-mlops
-```
 
-2. Install dependencies:
-```bash
+# Setup development environment
 ./scripts/setup-dev.sh
+
+# Deploy infrastructure and services
+make deploy-infrastructure
+make deploy-services
 ```
 
-3. Deploy local development environment:
+#### 3. Run Demo Pipeline
+
 ```bash
-make dev-deploy
+# Execute complete demo
+./scripts/run-demo-pipeline.sh
+
+# Or run individual steps
+./scripts/run-demo-pipeline.sh build    # Build model image
+./scripts/run-demo-pipeline.sh train    # Run training pipeline
+./scripts/run-demo-pipeline.sh deploy   # Deploy to staging
+./scripts/run-demo-pipeline.sh test     # Test deployment
 ```
 
-4. Access the platform:
+#### 4. Test Your Model
+
 ```bash
-kubectl port-forward svc/api-gateway 8080:80
+# Run comprehensive tests
+./scripts/quick-test.sh
+
+# Test specific endpoints
+./scripts/quick-test.sh generate
+./scripts/quick-test.sh performance
 ```
 
-## Project Structure
+## 📊 Access Dashboards
 
-```
-cirruslabs-mlops/
-├── services/                    # Microservices
-│   ├── model-registry/         # Model registry service
-│   ├── pipeline-orchestrator/  # Pipeline orchestration
-│   ├── monitoring-engine/      # Monitoring and analytics
-│   ├── security-compliance/    # Security and compliance
-│   ├── data-pipeline/          # Data processing
-│   └── model-serving/          # Model serving infrastructure
-├── infrastructure/             # Infrastructure as Code
-│   ├── kubernetes/            # K8s manifests
-│   ├── terraform/             # Cloud infrastructure
-│   └── docker/                # Container configurations
-├── config/                    # Configuration files
-├── docs/                      # Documentation
-├── scripts/                   # Automation scripts
-├── tests/                     # Test suites
-│   ├── unit/                 # Unit tests
-│   ├── integration/          # Integration tests
-│   └── e2e/                  # End-to-end tests
-└── Makefile                  # Build automation
+After running the demo, access these dashboards:
+
+```bash
+# Model API (test your LLM)
+kubectl port-forward -n mlops-platform svc/demo-llm-staging 8080:8000
+# Visit: http://localhost:8080/docs
+
+# Model Registry
+kubectl port-forward -n mlops-platform svc/model-registry 8081:8000
+# Visit: http://localhost:8081/docs
+
+# MLflow (experiment tracking)
+kubectl port-forward -n mlops-platform svc/mlflow 5000:5000
+# Visit: http://localhost:5000
+
+# Grafana (monitoring)
+kubectl port-forward -n mlops-platform svc/grafana 3000:3000
+# Visit: http://localhost:3000 (admin/admin123)
+
+# Argo Workflows
+kubectl port-forward -n argo svc/argo-server 2746:2746
+# Visit: http://localhost:2746
 ```
 
-## Development
+## 🤖 Demo LLM Model
+
+The included demo LLM showcases a complete ML lifecycle:
+
+### Features
+- **Lightweight GPT-2 based architecture** (~124M parameters)
+- **FastAPI serving** with comprehensive API
+- **MLflow integration** for experiment tracking
+- **Automated registration** with model registry
+- **Production-ready deployment** with monitoring
+- **Performance testing** and validation
+
+### API Example
+```bash
+# Generate text
+curl -X POST "http://localhost:8080/generate" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "text": "The future of machine learning is",
+       "max_length": 100,
+       "temperature": 0.7
+     }'
+```
+
+### Training Pipeline
+```bash
+# View pipeline steps
+argo get <workflow-name>
+
+# Watch pipeline execution  
+argo watch <workflow-name>
+
+# View logs
+argo logs <workflow-name>
+```
+
+## 🔧 Development
 
 ### Building Services
 ```bash
@@ -143,41 +215,165 @@ make test-integration
 make test-e2e
 ```
 
-### Deployment
+### Local Development
 ```bash
-# Deploy to development
+# Start local development environment
 make dev-deploy
 
-# Deploy to staging
-make staging-deploy
-
-# Deploy to production
-make prod-deploy
+# Run services locally
+docker-compose up -d
 ```
 
-## Documentation
+## 📋 Project Structure
 
-- [Implementation Plan](docs/implementation-plan.md)
-- [Architecture Guide](docs/architecture.md)
-- [API Documentation](docs/api/)
-- [Deployment Guide](docs/deployment.md)
-- [Contributing Guide](docs/CONTRIBUTING.md)
+```
+cirruslabs-mlops/
+├── services/                    # Microservices
+│   ├── model-registry/         # Model registry service
+│   ├── pipeline-orchestrator/  # Pipeline orchestration
+│   ├── monitoring-engine/      # Monitoring and analytics
+│   ├── security-compliance/    # Security and compliance
+│   ├── data-pipeline/          # Data processing
+│   └── model-serving/          # Model serving infrastructure
+├── models/                     # ML Models
+│   └── demo-llm/              # Demo LLM implementation
+├── infrastructure/             # Infrastructure as Code
+│   ├── kubernetes/            # K8s manifests
+│   ├── terraform/             # Cloud infrastructure
+│   └── docker/                # Container configurations
+├── docs/                      # Documentation
+├── scripts/                   # Automation scripts
+├── tests/                     # Test suites
+└── Makefile                  # Build automation
+```
 
-## Contributing
+## 📖 Documentation
 
-Please read our [Contributing Guide](docs/CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+- **[Demo Pipeline Guide](docs/demo-pipeline-guide.md)** - Complete walkthrough
+- **[Implementation Plan](docs/mlops-implementation-plan.md)** - Detailed implementation strategy
+- **[Architecture Guide](docs/mlops-modular-architecture.md)** - Technical architecture details
+- **[Testing Strategy](docs/mlops-testing-strategy.md)** - Comprehensive testing approach
+- **[Rollout Plan](docs/mlops-rollout-plan.md)** - Phased deployment strategy
+- **[Demo LLM Model](models/demo-llm/README.md)** - Model documentation
 
-## License
+## 🚀 Advanced Usage
+
+### Custom Model Integration
+```bash
+# Create new model from template
+cp -r models/demo-llm models/your-model
+# Modify model implementation in models/your-model/src/
+# Update configuration in models/your-model/config/
+```
+
+### Production Deployment
+```bash
+# Deploy to production
+make prod-deploy
+
+# Scale services
+kubectl scale deployment model-registry --replicas=5 -n mlops-platform
+
+# Set up autoscaling
+kubectl autoscale deployment demo-llm-production \
+    --cpu-percent=70 --min=3 --max=10 -n mlops-platform
+```
+
+### Monitoring and Alerts
+```bash
+# View metrics
+curl http://localhost:8080/metrics
+
+# Set up custom alerts in Grafana
+# Configure alert channels (Slack, email, PagerDuty)
+```
+
+## 🎯 Use Cases Demonstrated
+
+1. **Model Training** - Automated pipeline with quality gates
+2. **Model Registration** - Centralized model management
+3. **Model Deployment** - Staging and production deployment
+4. **Model Monitoring** - Real-time performance tracking
+5. **Model Versioning** - Complete lineage and rollback
+6. **A/B Testing** - Traffic splitting and comparison
+7. **Drift Detection** - Automated model degradation alerts
+8. **Compliance** - Audit trails and governance
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+**Pipeline fails:**
+```bash
+# Check pipeline logs
+argo logs <workflow-name>
+
+# Check pod resources
+kubectl describe pod <pod-name> -n mlops-platform
+```
+
+**Model serving issues:**
+```bash
+# Check service status
+kubectl get pods -n mlops-platform -l app=demo-llm
+
+# View logs
+kubectl logs -n mlops-platform -l app=demo-llm --tail=100
+```
+
+**Connection issues:**
+```bash
+# Verify services
+kubectl get svc -n mlops-platform
+
+# Test connectivity
+kubectl exec -it <pod-name> -n mlops-platform -- curl http://model-registry:8000/health
+```
+
+### Performance Tuning
+
+**Increase training speed:**
+```yaml
+# In models/demo-llm/config/training_config.yaml
+batch_size: 8  # Increase batch size
+max_epochs: 2  # Reduce epochs for demo
+```
+
+**Scale inference:**
+```bash
+# Increase replicas
+kubectl scale deployment demo-llm-staging --replicas=5 -n mlops-platform
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run tests (`make test`)
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Support
+## 🆘 Support
 
-For support and questions:
-- Create an issue in this repository
-- Contact the MLOps team at mlops-support@cirruslabs.com
-- Join our Slack channel: #mlops-platform
+- **Documentation**: Check the `/docs` directory
+- **Issues**: Create an issue in this repository
+- **Discussions**: Use GitHub Discussions for questions
+- **Demo**: Run `./scripts/run-demo-pipeline.sh --help`
 
-## Roadmap
+## 🎉 Getting Started Checklist
 
-See our [project roadmap](docs/ROADMAP.md) for planned features and improvements.
+- [ ] Clone the repository
+- [ ] Run `./scripts/setup-dev.sh`
+- [ ] Execute `./scripts/run-demo-pipeline.sh`
+- [ ] Access dashboards and test the model
+- [ ] Explore the documentation
+- [ ] Try customizing the demo model
+- [ ] Set up monitoring and alerts
+
+**Ready to revolutionize your ML operations? Start with our one-command demo! 🚀**
