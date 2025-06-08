@@ -350,7 +350,9 @@ Healthcare Assistant: """
             }
 
         # Check cache for similar queries
-        input_hash = hashlib.md5(user_input.lower().encode()).hexdigest()
+        input_hash = hashlib.md5(
+            user_input.lower().encode(), usedforsecurity=False
+        ).hexdigest()
         if input_hash in self.response_cache:
             cached = self.response_cache[input_hash]
             return {

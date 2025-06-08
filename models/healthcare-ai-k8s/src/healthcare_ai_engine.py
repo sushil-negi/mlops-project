@@ -179,7 +179,7 @@ class HealthcareAIEngine:
 
         # Return highest scoring category or 'general'
         if category_scores:
-            return max(category_scores, key=category_scores.get)
+            return max(category_scores.items(), key=lambda x: x[1])[0]
         return "general"
 
     def generate_response(self, user_input: str, use_history: bool = True) -> Dict:
@@ -200,7 +200,9 @@ class HealthcareAIEngine:
             }
 
         # Check cache
-        input_hash = hashlib.md5(user_input.lower().encode()).hexdigest()
+        input_hash = hashlib.md5(
+            user_input.lower().encode(), usedforsecurity=False
+        ).hexdigest()
         if input_hash in self.response_cache:
             self.statistics["cache_hits"] += 1
             cached = self.response_cache[input_hash]

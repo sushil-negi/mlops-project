@@ -174,7 +174,7 @@ class HealthcareAILogger:
     def log_error(
         self,
         error: Exception,
-        context: Dict[str, Any] = None,
+        context: Optional[Dict[str, Any]] = None,
         category: str = "unknown",
         **kwargs,
     ):

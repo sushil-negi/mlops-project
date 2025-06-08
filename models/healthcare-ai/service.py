@@ -24,6 +24,9 @@ except ImportError as e:
     print("Will use basic healthcare model instead")
     ENGINES_AVAILABLE = False
 
+# Configuration
+USE_TRAINED_MODEL = os.getenv("USE_TRAINED_MODEL", "false").lower() == "true"
+
 # If engines not available, create a basic fallback
 if not ENGINES_AVAILABLE:
     from healthcare_model import HealthcareResponseEngine
