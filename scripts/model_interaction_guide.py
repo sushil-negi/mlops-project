@@ -386,7 +386,7 @@ print(f"Generated: {result['generated_text'][0]}")
 
 if __name__ == "__main__":
     import sys
-    
+
     guide = ModelInteractionGuide()
 
     if len(sys.argv) > 1:
