@@ -167,8 +167,9 @@ class TestMLClassificationAccuracy:
         else:
             # For non-crisis, check if category matches or is contextually overridden
             if response["method"] == "contextual_analysis":
-                # Contextual override is acceptable
+                # Contextual override is acceptable - these provide better responses
                 assert response["confidence"] == 0.95
+                assert response["category"] == "contextual_override"
             else:
                 # ML classification should be reasonably accurate
                 # Allow for some flexibility in classification
