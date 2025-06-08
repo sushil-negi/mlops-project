@@ -425,7 +425,7 @@ jobs:
 
     - name: Notify deployment
       uses: 8398a7/action-slack@v3
-      if: always() && secrets.SLACK_WEBHOOK_URL != ''
+      if: always() && env.SLACK_WEBHOOK_URL != ''
       with:
         status: ${{ job.status }}
         text: Healthcare AI deployment to production ${{ job.status }}
@@ -470,7 +470,7 @@ jobs:
 
     - name: Notify rollback
       uses: 8398a7/action-slack@v3
-      if: secrets.SLACK_WEBHOOK_URL != ''
+      if: env.SLACK_WEBHOOK_URL != ''
       with:
         status: 'warning'
         text: 'Healthcare AI deployment failed - automatic rollback completed'
