@@ -252,6 +252,64 @@ class TestMLClassificationAccuracy:
 class TestResponseQualityMetrics:
     """Test response quality metrics"""
 
+    @pytest.fixture(scope="class")
+    def trained_model_path(self, tmp_path_factory):
+        """Create a trained model for testing - duplicated from TestMLClassificationAccuracy"""
+        # Sample training data covering all categories
+        training_data = [
+            # ADL Mobility
+            ("I need help transferring from bed to wheelchair", "adl_mobility"),
+            ("What exercises can improve my balance?", "adl_mobility"),
+            # Senior Medication
+            ("How do I manage multiple medications?", "senior_medication"),
+            ("I keep forgetting to take my pills", "senior_medication"),
+            # Mental Health
+            ("I'm anxious about my health condition", "mental_health_anxiety"),
+            ("Feeling depressed and hopeless", "mental_health_depression"),
+            # Caregiver
+            ("I need a break from caregiving", "caregiver_respite"),
+            ("I'm exhausted from caring for my parent", "caregiver_burnout"),
+            # Disability
+            ("What wheelchair is best for me?", "disability_equipment"),
+            ("Are employers required to accommodate?", "disability_rights"),
+            # Crisis
+            ("I want to hurt myself", "crisis_mental_health"),
+        ]
+
+        texts = [text for text, _ in training_data]
+        labels = [label for _, label in training_data]
+
+        # Create simple pipeline
+        from sklearn.pipeline import Pipeline
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.naive_bayes import MultinomialNB
+
+        pipeline = Pipeline(
+            [
+                ("tfidf", TfidfVectorizer(max_features=100)),
+                ("classifier", MultinomialNB()),
+            ]
+        )
+        pipeline.fit(texts, labels)
+
+        # Create model data
+        category_mapping = {i: cat for i, cat in enumerate(set(labels))}
+        model_data = {
+            "pipeline": pipeline,
+            "category_mapping": category_mapping,
+            "healthcare_responses": {
+                cat: [f"Response for {cat}"] for cat in category_mapping.values()
+            },
+        }
+
+        # Save model
+        tmp_path = tmp_path_factory.mktemp("model")
+        model_path = tmp_path / "test_model.pkl"
+        with open(model_path, "wb") as f:
+            pickle.dump(model_data, f)
+
+        return model_path
+
     @pytest.fixture
     def engine(self, trained_model_path):
         """Create engine with trained model"""
@@ -331,6 +389,50 @@ class TestResponseQualityMetrics:
 
 class TestPerformanceMetrics:
     """Test performance metrics of the system"""
+
+    @pytest.fixture(scope="class")
+    def trained_model_path(self, tmp_path_factory):
+        """Create a trained model for testing - duplicated from TestMLClassificationAccuracy"""
+        # Sample training data
+        training_data = [
+            ("I need help with mobility", "adl_mobility"),
+            ("Medication management tips", "senior_medication"),
+            ("Feeling anxious about health", "mental_health_anxiety"),
+        ]
+
+        texts = [text for text, _ in training_data]
+        labels = [label for _, label in training_data]
+
+        # Create simple pipeline
+        from sklearn.pipeline import Pipeline
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.naive_bayes import MultinomialNB
+
+        pipeline = Pipeline(
+            [
+                ("tfidf", TfidfVectorizer(max_features=100)),
+                ("classifier", MultinomialNB()),
+            ]
+        )
+        pipeline.fit(texts, labels)
+
+        # Create model data
+        category_mapping = {i: cat for i, cat in enumerate(set(labels))}
+        model_data = {
+            "pipeline": pipeline,
+            "category_mapping": category_mapping,
+            "healthcare_responses": {
+                cat: [f"Response for {cat}"] for cat in category_mapping.values()
+            },
+        }
+
+        # Save model
+        tmp_path = tmp_path_factory.mktemp("model")
+        model_path = tmp_path / "test_model.pkl"
+        with open(model_path, "wb") as f:
+            pickle.dump(model_data, f)
+
+        return model_path
 
     @pytest.fixture
     def engine(self, trained_model_path):
