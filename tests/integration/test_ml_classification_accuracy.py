@@ -80,7 +80,7 @@ class TestMLClassificationAccuracy:
                 assert response["category"] == "contextual_override"
             else:
                 # ML classification should be reasonably accurate
-                # Allow for some flexibility in classification  
+                # Allow for some flexibility in classification
                 assert response["method"] == "ml_model"
                 # For these specific queries that should trigger contextual overrides,
                 # allow more flexible matching since the ML model may classify differently
@@ -314,17 +314,21 @@ class TestPerformanceMetrics:
         texts = [text for text, _ in training_data]
         labels = [label for _, label in training_data]
 
-        pipeline = Pipeline([
-            ("tfidf", TfidfVectorizer(max_features=100)),
-            ("classifier", MultinomialNB()),
-        ])
+        pipeline = Pipeline(
+            [
+                ("tfidf", TfidfVectorizer(max_features=100)),
+                ("classifier", MultinomialNB()),
+            ]
+        )
         pipeline.fit(texts, labels)
 
         category_mapping = {i: cat for i, cat in enumerate(set(labels))}
         model_data = {
             "pipeline": pipeline,
             "category_mapping": category_mapping,
-            "healthcare_responses": {cat: [f"Response for {cat}"] for cat in category_mapping.values()},
+            "healthcare_responses": {
+                cat: [f"Response for {cat}"] for cat in category_mapping.values()
+            },
         }
 
         tmp_path = tmp_path_factory.mktemp("model")
