@@ -22,110 +22,111 @@ sys.path.insert(
 from healthcare_trained_engine import HealthcareTrainedEngine
 
 
+@pytest.fixture(scope="session")
+def trained_model_path(tmp_path_factory):
+    """Create a trained model for testing - shared across all test classes"""
+    # Sample training data covering all categories
+    training_data = [
+        # ADL Mobility
+        ("I need help transferring from bed to wheelchair", "adl_mobility"),
+        ("What exercises can improve my balance?", "adl_mobility"),
+        ("How do I safely use a walker?", "adl_mobility"),
+        ("My legs are weak, what mobility aids help?", "adl_mobility"),
+        # ADL Self-care
+        ("I struggle with dressing due to arthritis", "adl_self_care"),
+        ("What tools help with bathing independently?", "adl_self_care"),
+        ("Eating is difficult with tremors", "adl_self_care"),
+        ("Need help with grooming tasks", "adl_self_care"),
+        # Senior Medication
+        ("How do I manage multiple medications?", "senior_medication"),
+        ("I keep forgetting to take my pills", "senior_medication"),
+        ("What's the best pill organizer for seniors?", "senior_medication"),
+        ("Medication side effects concern me", "senior_medication"),
+        # Senior Social
+        ("My mother feels isolated and lonely", "senior_social"),
+        ("Where can seniors meet friends?", "senior_social"),
+        ("How to stay socially connected as elderly?", "senior_social"),
+        ("Senior activity programs near me", "senior_social"),
+        # Mental Health Anxiety
+        ("I'm anxious about my health condition", "mental_health_anxiety"),
+        ("Panic attacks are affecting my life", "mental_health_anxiety"),
+        ("How to manage anxiety as a senior?", "mental_health_anxiety"),
+        ("Worried constantly about everything", "mental_health_anxiety"),
+        # Mental Health Depression
+        ("Feeling depressed and hopeless", "mental_health_depression"),
+        ("No motivation to do anything anymore", "mental_health_depression"),
+        ("Depression makes daily tasks hard", "mental_health_depression"),
+        ("Sad all the time, need help", "mental_health_depression"),
+        # Caregiver Respite
+        ("I need a break from caregiving", "caregiver_respite"),
+        ("Where can I find respite care?", "caregiver_respite"),
+        ("How much does respite care cost?", "caregiver_respite"),
+        ("Temporary care for my spouse needed", "caregiver_respite"),
+        # Caregiver Burnout
+        ("I'm exhausted from caring for my parent", "caregiver_burnout"),
+        ("Feeling resentful about caregiving", "caregiver_burnout"),
+        ("No time for myself anymore", "caregiver_burnout"),
+        ("Caregiver stress is overwhelming", "caregiver_burnout"),
+        # Disability Equipment
+        ("What wheelchair is best for me?", "disability_equipment"),
+        ("Need communication devices for speech", "disability_equipment"),
+        ("Home modifications for wheelchair access", "disability_equipment"),
+        ("Adaptive computer equipment needed", "disability_equipment"),
+        # Disability Rights
+        ("My employer won't provide accommodations", "disability_rights"),
+        ("ADA rights for wheelchair users", "disability_rights"),
+        ("Housing discrimination due to disability", "disability_rights"),
+        ("Educational accommodations for disability", "disability_rights"),
+        # Crisis Mental Health
+        ("I want to end my life", "crisis_mental_health"),
+        ("Thinking about hurting myself", "crisis_mental_health"),
+        ("Life isn't worth living anymore", "crisis_mental_health"),
+        ("Suicidal thoughts won't stop", "crisis_mental_health"),
+    ]
+
+    # Prepare data
+    texts = [item[0] for item in training_data]
+    labels = [item[1] for item in training_data]
+
+    # Create category mapping
+    unique_categories = sorted(list(set(labels)))
+    category_to_idx = {cat: idx for idx, cat in enumerate(unique_categories)}
+    idx_to_category = {idx: cat for cat, idx in category_to_idx.items()}
+
+    # Convert labels to indices
+    label_indices = [category_to_idx[label] for label in labels]
+
+    # Train model
+    pipeline = Pipeline(
+        [
+            ("tfidf", TfidfVectorizer(max_features=100, ngram_range=(1, 2))),
+            ("classifier", MultinomialNB()),
+        ]
+    )
+
+    pipeline.fit(texts, label_indices)
+
+    # Create dummy responses for testing
+    healthcare_responses = {
+        cat: [f"Test response for {cat}"] for cat in unique_categories
+    }
+
+    # Save model
+    model_data = {
+        "pipeline": pipeline,
+        "category_mapping": idx_to_category,
+        "healthcare_responses": healthcare_responses,
+    }
+
+    model_path = tmp_path_factory.mktemp("models") / "test_model.pkl"
+    with open(model_path, "wb") as f:
+        pickle.dump(model_data, f)
+
+    return model_path
+
+
 class TestMLClassificationAccuracy:
     """Test ML classification accuracy with various queries"""
-
-    @pytest.fixture(scope="class")
-    def trained_model_path(self, tmp_path_factory):
-        """Create a trained model for testing"""
-        # Sample training data covering all categories
-        training_data = [
-            # ADL Mobility
-            ("I need help transferring from bed to wheelchair", "adl_mobility"),
-            ("What exercises can improve my balance?", "adl_mobility"),
-            ("How do I safely use a walker?", "adl_mobility"),
-            ("My legs are weak, what mobility aids help?", "adl_mobility"),
-            # ADL Self-care
-            ("I struggle with dressing due to arthritis", "adl_self_care"),
-            ("What tools help with bathing independently?", "adl_self_care"),
-            ("Eating is difficult with tremors", "adl_self_care"),
-            ("Need help with grooming tasks", "adl_self_care"),
-            # Senior Medication
-            ("How do I manage multiple medications?", "senior_medication"),
-            ("I keep forgetting to take my pills", "senior_medication"),
-            ("What's the best pill organizer for seniors?", "senior_medication"),
-            ("Medication side effects concern me", "senior_medication"),
-            # Senior Social
-            ("My mother feels isolated and lonely", "senior_social"),
-            ("Where can seniors meet friends?", "senior_social"),
-            ("How to stay socially connected as elderly?", "senior_social"),
-            ("Senior activity programs near me", "senior_social"),
-            # Mental Health Anxiety
-            ("I'm anxious about my health condition", "mental_health_anxiety"),
-            ("Panic attacks are affecting my life", "mental_health_anxiety"),
-            ("How to manage anxiety as a senior?", "mental_health_anxiety"),
-            ("Worried constantly about everything", "mental_health_anxiety"),
-            # Mental Health Depression
-            ("Feeling depressed and hopeless", "mental_health_depression"),
-            ("No motivation to do anything anymore", "mental_health_depression"),
-            ("Depression makes daily tasks hard", "mental_health_depression"),
-            ("Sad all the time, need help", "mental_health_depression"),
-            # Caregiver Respite
-            ("I need a break from caregiving", "caregiver_respite"),
-            ("Where can I find respite care?", "caregiver_respite"),
-            ("How much does respite care cost?", "caregiver_respite"),
-            ("Temporary care for my spouse needed", "caregiver_respite"),
-            # Caregiver Burnout
-            ("I'm exhausted from caring for my parent", "caregiver_burnout"),
-            ("Feeling resentful about caregiving", "caregiver_burnout"),
-            ("No time for myself anymore", "caregiver_burnout"),
-            ("Caregiver stress is overwhelming", "caregiver_burnout"),
-            # Disability Equipment
-            ("What wheelchair is best for me?", "disability_equipment"),
-            ("Need communication devices for speech", "disability_equipment"),
-            ("Home modifications for wheelchair access", "disability_equipment"),
-            ("Adaptive computer equipment needed", "disability_equipment"),
-            # Disability Rights
-            ("My employer won't provide accommodations", "disability_rights"),
-            ("ADA rights for wheelchair users", "disability_rights"),
-            ("Housing discrimination due to disability", "disability_rights"),
-            ("Educational accommodations for disability", "disability_rights"),
-            # Crisis Mental Health
-            ("I want to end my life", "crisis_mental_health"),
-            ("Thinking about hurting myself", "crisis_mental_health"),
-            ("Life isn't worth living anymore", "crisis_mental_health"),
-            ("Suicidal thoughts won't stop", "crisis_mental_health"),
-        ]
-
-        # Prepare data
-        texts = [item[0] for item in training_data]
-        labels = [item[1] for item in training_data]
-
-        # Create category mapping
-        unique_categories = sorted(list(set(labels)))
-        category_to_idx = {cat: idx for idx, cat in enumerate(unique_categories)}
-        idx_to_category = {idx: cat for cat, idx in category_to_idx.items()}
-
-        # Convert labels to indices
-        label_indices = [category_to_idx[label] for label in labels]
-
-        # Train model
-        pipeline = Pipeline(
-            [
-                ("tfidf", TfidfVectorizer(max_features=100, ngram_range=(1, 2))),
-                ("classifier", MultinomialNB()),
-            ]
-        )
-
-        pipeline.fit(texts, label_indices)
-
-        # Create dummy responses for testing
-        healthcare_responses = {
-            cat: [f"Test response for {cat}"] for cat in unique_categories
-        }
-
-        # Save model
-        model_data = {
-            "pipeline": pipeline,
-            "category_mapping": idx_to_category,
-            "healthcare_responses": healthcare_responses,
-        }
-
-        model_path = tmp_path_factory.mktemp("models") / "test_model.pkl"
-        with open(model_path, "wb") as f:
-            pickle.dump(model_data, f)
-
-        return model_path
 
     @pytest.fixture
     def engine(self, trained_model_path):
@@ -172,7 +173,7 @@ class TestMLClassificationAccuracy:
                 assert response["category"] == "contextual_override"
             else:
                 # ML classification should be reasonably accurate
-                # Allow for some flexibility in classification
+                # Allow for some flexibility in classification  
                 assert response["method"] == "ml_model"
                 # Category should be related to the expected one
                 assert expected_category in response["category"] or response[
@@ -253,64 +254,6 @@ class TestMLClassificationAccuracy:
 class TestResponseQualityMetrics:
     """Test response quality metrics"""
 
-    @pytest.fixture(scope="class")
-    def trained_model_path(self, tmp_path_factory):
-        """Create a trained model for testing - duplicated from TestMLClassificationAccuracy"""
-        # Sample training data covering all categories
-        training_data = [
-            # ADL Mobility
-            ("I need help transferring from bed to wheelchair", "adl_mobility"),
-            ("What exercises can improve my balance?", "adl_mobility"),
-            # Senior Medication
-            ("How do I manage multiple medications?", "senior_medication"),
-            ("I keep forgetting to take my pills", "senior_medication"),
-            # Mental Health
-            ("I'm anxious about my health condition", "mental_health_anxiety"),
-            ("Feeling depressed and hopeless", "mental_health_depression"),
-            # Caregiver
-            ("I need a break from caregiving", "caregiver_respite"),
-            ("I'm exhausted from caring for my parent", "caregiver_burnout"),
-            # Disability
-            ("What wheelchair is best for me?", "disability_equipment"),
-            ("Are employers required to accommodate?", "disability_rights"),
-            # Crisis
-            ("I want to hurt myself", "crisis_mental_health"),
-        ]
-
-        texts = [text for text, _ in training_data]
-        labels = [label for _, label in training_data]
-
-        # Create simple pipeline
-        from sklearn.pipeline import Pipeline
-        from sklearn.feature_extraction.text import TfidfVectorizer
-        from sklearn.naive_bayes import MultinomialNB
-
-        pipeline = Pipeline(
-            [
-                ("tfidf", TfidfVectorizer(max_features=100)),
-                ("classifier", MultinomialNB()),
-            ]
-        )
-        pipeline.fit(texts, labels)
-
-        # Create model data
-        category_mapping = {i: cat for i, cat in enumerate(set(labels))}
-        model_data = {
-            "pipeline": pipeline,
-            "category_mapping": category_mapping,
-            "healthcare_responses": {
-                cat: [f"Response for {cat}"] for cat in category_mapping.values()
-            },
-        }
-
-        # Save model
-        tmp_path = tmp_path_factory.mktemp("model")
-        model_path = tmp_path / "test_model.pkl"
-        with open(model_path, "wb") as f:
-            pickle.dump(model_data, f)
-
-        return model_path
-
     @pytest.fixture
     def engine(self, trained_model_path):
         """Create engine with trained model"""
@@ -390,50 +333,6 @@ class TestResponseQualityMetrics:
 
 class TestPerformanceMetrics:
     """Test performance metrics of the system"""
-
-    @pytest.fixture(scope="class")
-    def trained_model_path(self, tmp_path_factory):
-        """Create a trained model for testing - duplicated from TestMLClassificationAccuracy"""
-        # Sample training data
-        training_data = [
-            ("I need help with mobility", "adl_mobility"),
-            ("Medication management tips", "senior_medication"),
-            ("Feeling anxious about health", "mental_health_anxiety"),
-        ]
-
-        texts = [text for text, _ in training_data]
-        labels = [label for _, label in training_data]
-
-        # Create simple pipeline
-        from sklearn.pipeline import Pipeline
-        from sklearn.feature_extraction.text import TfidfVectorizer
-        from sklearn.naive_bayes import MultinomialNB
-
-        pipeline = Pipeline(
-            [
-                ("tfidf", TfidfVectorizer(max_features=100)),
-                ("classifier", MultinomialNB()),
-            ]
-        )
-        pipeline.fit(texts, labels)
-
-        # Create model data
-        category_mapping = {i: cat for i, cat in enumerate(set(labels))}
-        model_data = {
-            "pipeline": pipeline,
-            "category_mapping": category_mapping,
-            "healthcare_responses": {
-                cat: [f"Response for {cat}"] for cat in category_mapping.values()
-            },
-        }
-
-        # Save model
-        tmp_path = tmp_path_factory.mktemp("model")
-        model_path = tmp_path / "test_model.pkl"
-        with open(model_path, "wb") as f:
-            pickle.dump(model_data, f)
-
-        return model_path
 
     @pytest.fixture
     def engine(self, trained_model_path):
