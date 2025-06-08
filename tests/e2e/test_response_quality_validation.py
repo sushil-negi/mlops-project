@@ -293,6 +293,27 @@ class TestResponseQualityValidation:
         """Get the service URL"""
         return os.getenv("HEALTHCARE_SERVICE_URL", "http://localhost:8080")
 
+    @pytest.fixture(scope="class", autouse=True)
+    def ensure_service_running(self, service_url):
+        """Ensure the healthcare service is running"""
+        max_retries = 5  # Shorter retry for this class
+        retry_delay = 1
+
+        for i in range(max_retries):
+            try:
+                response = requests.get(f"{service_url}/health", timeout=5)
+                if response.status_code == 200:
+                    print(f"Healthcare service is ready at {service_url}")
+                    return
+            except requests.exceptions.RequestException:
+                pass
+
+            if i < max_retries - 1:
+                print(f"Waiting for service to be ready... ({i+1}/{max_retries})")
+                time.sleep(retry_delay)
+
+        pytest.skip("Healthcare service is not running")
+
     def test_medical_disclaimer_present(self, service_url):
         """Test that responses include appropriate medical disclaimers"""
         medical_queries = [
