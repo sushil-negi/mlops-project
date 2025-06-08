@@ -7,61 +7,93 @@ import json
 import logging
 import os
 import time
+from contextlib import nullcontext
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
 
-import redis
+try:
+    import redis
+except ImportError:
+    redis = None
+    print("Warning: Redis not available, running without caching")
+
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
 # Prometheus metrics - create new registry to avoid conflicts
-from prometheus_client import (
-    CollectorRegistry,
-    Counter,
-    Gauge,
-    Histogram,
-    generate_latest,
-)
+try:
+    from prometheus_client import (
+        CollectorRegistry,
+        Counter,
+        Gauge,
+        Histogram,
+        generate_latest,
+    )
+
+    PROMETHEUS_AVAILABLE = True
+except ImportError:
+    PROMETHEUS_AVAILABLE = False
+    print("Warning: Prometheus client not available")
+
 from pydantic import BaseModel
 
 # Import healthcare AI engine
 from src.healthcare_ai_engine import HealthcareAIEngine
-from src.observability import (
-    get_logger,
-    get_tracer,
-    healthcare_span,
-    init_observability,
-    trace_healthcare_function,
-)
 
-custom_registry = CollectorRegistry()
+try:
+    from src.observability import (
+        get_logger,
+        get_tracer,
+        healthcare_span,
+        init_observability,
+        trace_healthcare_function,
+    )
 
-request_count = Counter(
-    "healthcare_ai_requests_total",
-    "Total requests",
-    ["method", "endpoint"],
-    registry=custom_registry,
-)
-request_duration = Histogram(
-    "healthcare_ai_request_duration_seconds",
-    "Request duration",
-    registry=custom_registry,
-)
-model_predictions = Counter(
-    "healthcare_ai_predictions_total",
-    "Total predictions",
-    ["category", "method"],
-    registry=custom_registry,
-)
-active_connections = Gauge(
-    "healthcare_ai_active_connections", "Active connections", registry=custom_registry
-)
-model_accuracy = Gauge(
-    "healthcare_ai_model_accuracy", "Current model accuracy", registry=custom_registry
-)
+    OBSERVABILITY_AVAILABLE = True
+except ImportError:
+    OBSERVABILITY_AVAILABLE = False
+    print("Warning: Observability features not available")
+
+if PROMETHEUS_AVAILABLE:
+    custom_registry = CollectorRegistry()
+
+    request_count = Counter(
+        "healthcare_ai_requests_total",
+        "Total requests",
+        ["method", "endpoint"],
+        registry=custom_registry,
+    )
+    request_duration = Histogram(
+        "healthcare_ai_request_duration_seconds",
+        "Request duration",
+        registry=custom_registry,
+    )
+    model_predictions = Counter(
+        "healthcare_ai_predictions_total",
+        "Total predictions",
+        ["category", "method"],
+        registry=custom_registry,
+    )
+    active_connections = Gauge(
+        "healthcare_ai_active_connections",
+        "Active connections",
+        registry=custom_registry,
+    )
+    model_accuracy = Gauge(
+        "healthcare_ai_model_accuracy",
+        "Current model accuracy",
+        registry=custom_registry,
+    )
+else:
+    # Create dummy objects if Prometheus is not available
+    request_count = None
+    request_duration = None
+    model_predictions = None
+    active_connections = None
+    model_accuracy = None
 
 # Setup logging
 logging.basicConfig(
@@ -125,25 +157,32 @@ def initialize_services():
     global healthcare_engine, redis_client, observability_logger, tracer
 
     try:
-        # Initialize observability first
-        observability_logger, tracer = init_observability(app)
+        # Initialize observability first (if available)
+        if OBSERVABILITY_AVAILABLE:
+            observability_logger, tracer = init_observability(app)
+        else:
+            observability_logger, tracer = None, None
 
         # Initialize healthcare AI engine
         logger.info("Initializing Healthcare AI Engine...")
         healthcare_engine = HealthcareAIEngine()
 
         # Initialize Redis (optional, for caching)
-        try:
-            redis_client = redis.Redis(
-                host=os.getenv("REDIS_HOST", "localhost"),
-                port=int(os.getenv("REDIS_PORT", 6379)),
-                decode_responses=True,
-                socket_timeout=5,
-            )
-            redis_client.ping()
-            logger.info("Redis connection established")
-        except Exception as e:
-            logger.warning(f"Redis not available: {e}")
+        if redis:
+            try:
+                redis_client = redis.Redis(
+                    host=os.getenv("REDIS_HOST", "localhost"),
+                    port=int(os.getenv("REDIS_PORT", 6379)),
+                    decode_responses=True,
+                    socket_timeout=5,
+                )
+                redis_client.ping()
+                logger.info("Redis connection established")
+            except Exception as e:
+                logger.warning(f"Redis not available: {e}")
+                redis_client = None
+        else:
+            logger.warning("Redis module not available")
             redis_client = None
 
         logger.info("Healthcare AI Service initialized successfully")
@@ -165,21 +204,25 @@ async def add_process_time_header(request, call_next):
     start_time = time.time()
 
     # Update active connections
-    active_connections.inc()
+    if active_connections:
+        active_connections.inc()
 
     try:
         response = await call_next(request)
         process_time = time.time() - start_time
 
-        # Update metrics
-        request_count.labels(method=request.method, endpoint=request.url.path).inc()
-        request_duration.observe(process_time)
+        # Update metrics (if available)
+        if request_count:
+            request_count.labels(method=request.method, endpoint=request.url.path).inc()
+        if request_duration:
+            request_duration.observe(process_time)
 
         response.headers["X-Process-Time"] = str(process_time)
         return response
 
     finally:
-        active_connections.dec()
+        if active_connections:
+            active_connections.dec()
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -221,7 +264,7 @@ async def metrics():
 
 
 @app.post("/chat", response_model=ChatResponse)
-@trace_healthcare_function("chat_request")
+@trace_healthcare_function("chat_request") if OBSERVABILITY_AVAILABLE else lambda x: x
 async def chat_endpoint(request: ChatRequest):
     """Main chat endpoint with monitoring"""
     if healthcare_engine is None:
@@ -231,12 +274,18 @@ async def chat_endpoint(request: ChatRequest):
 
     start_time = time.time()
 
-    with healthcare_span(
-        "chat_processing",
-        message_length=len(request.message),
-        user_id=request.user_id,
-        session_id=request.session_id,
-    ) as span:
+    # Use observability if available, otherwise use a dummy context manager
+    if OBSERVABILITY_AVAILABLE:
+        span_context = healthcare_span(
+            "chat_processing",
+            message_length=len(request.message),
+            user_id=request.user_id,
+            session_id=request.session_id,
+        )
+    else:
+        span_context = nullcontext()
+
+    with span_context as span:
 
         try:
             # Check cache first (if Redis available)
@@ -248,16 +297,23 @@ async def chat_endpoint(request: ChatRequest):
                     cached_response = redis_client.get(cache_key)
                     if cached_response:
                         cached = True
-                        span.set_attribute("cache_hit", True)
+                        if span:
+                            span.set_attribute("cache_hit", True)
                         logger.info("Returning cached response")
                         return ChatResponse.parse_raw(cached_response)
                 except Exception as e:
                     logger.warning(f"Cache read error: {e}")
 
-            span.set_attribute("cache_hit", False)
+            if span:
+                span.set_attribute("cache_hit", False)
 
             # Generate response
-            with healthcare_span("model_inference") as inference_span:
+            if OBSERVABILITY_AVAILABLE:
+                inference_context = healthcare_span("model_inference")
+            else:
+                inference_context = nullcontext()
+
+            with inference_context as inference_span:
                 response_data = healthcare_engine.generate_response(request.message)
 
             generation_time = time.time() - start_time
@@ -273,15 +329,17 @@ async def chat_endpoint(request: ChatRequest):
                 timestamp=datetime.now().isoformat(),
             )
 
-            # Add span attributes
-            span.set_attribute("response_category", chat_response.category)
-            span.set_attribute("response_confidence", chat_response.confidence)
-            span.set_attribute("response_time", generation_time)
+            # Add span attributes (if available)
+            if span:
+                span.set_attribute("response_category", chat_response.category)
+                span.set_attribute("response_confidence", chat_response.confidence)
+                span.set_attribute("response_time", generation_time)
 
-            # Update metrics
-            model_predictions.labels(
-                category=chat_response.category, method=chat_response.method
-            ).inc()
+            # Update metrics (if available)
+            if model_predictions:
+                model_predictions.labels(
+                    category=chat_response.category, method=chat_response.method
+                ).inc()
 
             # Cache response (if Redis available)
             if redis_client and cache_key:
@@ -317,8 +375,9 @@ async def chat_endpoint(request: ChatRequest):
             return chat_response
 
         except Exception as e:
-            span.set_attribute("error", True)
-            span.set_attribute("error_type", type(e).__name__)
+            if span:
+                span.set_attribute("error", True)
+                span.set_attribute("error_type", type(e).__name__)
 
             if observability_logger:
                 observability_logger.log_error(
@@ -384,10 +443,9 @@ if __name__ == "__main__":
 
     # Run with uvicorn
     uvicorn.run(
-        "k8s_service:app",
+        app,
         host=host,
         port=port,
-        workers=workers,
         log_level=log_level,
         access_log=True,
     )

@@ -226,8 +226,30 @@ jobs:
     - name: Start healthcare AI service
       run: |
         cd models/healthcare-ai-k8s
-        python src/k8s_service.py &
-        sleep 10
+        # Start service with error logging
+        python src/k8s_service.py > ../../service.log 2>&1 &
+        SERVICE_PID=$!
+        echo "Started service with PID: $SERVICE_PID"
+        sleep 15
+        
+        # Check if service is still running
+        if kill -0 $SERVICE_PID 2>/dev/null; then
+          echo "Service is running"
+        else
+          echo "Service crashed, showing logs:"
+          cat ../../service.log
+          exit 1
+        fi
+        
+        # Wait for service to be ready
+        for i in {1..30}; do
+          if curl -s http://localhost:8080/health > /dev/null 2>&1; then
+            echo "Service is ready"
+            break
+          fi
+          echo "Waiting for service... attempt $i/30"
+          sleep 2
+        done
 
     - name: Run integration tests
       run: |
