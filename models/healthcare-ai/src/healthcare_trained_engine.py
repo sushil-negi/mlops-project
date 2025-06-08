@@ -80,9 +80,14 @@ class HealthcareTrainedEngine:
             return self._get_crisis_response(start_time)
 
         # Check cache
-        input_hash = hashlib.md5(
-            user_input.lower().encode(), usedforsecurity=False
-        ).hexdigest()
+        try:
+            # Try with usedforsecurity parameter (Python 3.9+)
+            input_hash = hashlib.md5(
+                user_input.lower().encode(), usedforsecurity=False
+            ).hexdigest()
+        except TypeError:
+            # Fallback for older Python versions
+            input_hash = hashlib.md5(user_input.lower().encode()).hexdigest()
         if input_hash in self.response_cache:
             cached = self.response_cache[input_hash]
             return {
