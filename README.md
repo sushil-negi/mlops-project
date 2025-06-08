@@ -177,8 +177,19 @@ All services are configured via `docker-compose.yml`:
 1. Add new contextual scenarios in `healthcare_trained_engine.py`
 2. Write corresponding tests in `tests/unit/`
 3. Update documentation
-4. Run full test suite before committing
-5. Ensure 80%+ test coverage maintained
+4. **Review pipeline requirements** - See [Pipeline Guide](docs/pipeline-guide.md) for CI/CD workflow
+5. Run full test suite before committing
+6. Ensure 80%+ test coverage maintained
+
+## Development Workflows
+
+### 📋 **Pipeline Usage Guide**
+See [docs/pipeline-guide.md](docs/pipeline-guide.md) for detailed information on:
+- **When to use** CI vs ML vs Security pipelines
+- **Expected runtimes** and trigger conditions  
+- **Local testing** procedures before pushing
+- **Pipeline artifacts** and troubleshooting
+- **Healthcare AI specific** validation requirements
 
 ## License
 
