@@ -393,17 +393,7 @@ jobs:
         # Check for compliance report
         if [ -f "security-reports/compliance-report/healthcare_compliance_report.json" ]; then
           echo "## Healthcare Compliance Status" >> security-summary.md
-          python3 -c "
-import json
-with open('security-reports/compliance-report/healthcare_compliance_report.json', 'r') as f:
-    report = json.load(f)
-print('Status: ' + report['compliance_status'])
-print('Issues Found: ' + str(report['total_issues']))
-if report['issues']:
-    print('Issues:')
-    for issue in report['issues']:
-        print('- ' + issue)
-" >> security-summary.md
+          python3 -c "import json; f=open('security-reports/compliance-report/healthcare_compliance_report.json','r'); report=json.load(f); f.close(); print('Status: ' + report['compliance_status']); print('Issues Found: ' + str(report['total_issues'])); [print('- ' + issue) for issue in report['issues']] if report['issues'] else None" >> security-summary.md
         fi
         
         echo "" >> security-summary.md
