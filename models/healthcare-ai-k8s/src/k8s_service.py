@@ -16,14 +16,26 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+
 # Prometheus metrics - create new registry to avoid conflicts
-from prometheus_client import (CollectorRegistry, Counter, Gauge, Histogram,
-                               generate_latest)
+from prometheus_client import (
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
+)
 from pydantic import BaseModel
+
 # Import healthcare AI engine
 from src.healthcare_ai_engine import HealthcareAIEngine
-from src.observability import (get_logger, get_tracer, healthcare_span,
-                               init_observability, trace_healthcare_function)
+from src.observability import (
+    get_logger,
+    get_tracer,
+    healthcare_span,
+    init_observability,
+    trace_healthcare_function,
+)
 
 custom_registry = CollectorRegistry()
 
