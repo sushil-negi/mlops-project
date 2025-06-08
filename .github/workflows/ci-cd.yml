@@ -61,29 +61,11 @@ jobs:
 
     - name: Security scan (bandit)
       run: |
-        echo '{"results": [], "metrics": {"_totals": {"loc": 0, "nosec": 0}}}' > bandit-report.json
-        bandit -r models/ scripts/ -f json -o bandit-report.json || true
         bandit -r models/ scripts/ --severity-level medium || true
 
     - name: Dependency vulnerability scan (safety)
       run: |
-        echo '{"report_meta": {"scan_target": "requirements", "vulnerabilities_found": 0}, "scanned_packages": [], "affected_packages": [], "vulnerabilities": []}' > safety-report.json
-        safety check --json --output safety-report.json || true
         safety check || true
-
-    - name: Verify report files exist
-      run: |
-        ls -la *.json || echo "No JSON files found"
-        pwd
-
-    - name: Upload security reports
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: security-reports
-        path: |
-          bandit-report.json
-          safety-report.json
 
   unit-tests:
     name: Unit Tests
