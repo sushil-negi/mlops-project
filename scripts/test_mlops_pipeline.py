@@ -242,10 +242,11 @@ if __name__ == "__main__":
         # For CI/CD: Just validate that the pipeline script exists and dependencies work
         print("🏥 Validating MLOps pipeline health check...")
         try:
-            import joblib
-            import sklearn
             import json
             from pathlib import Path
+
+            import joblib
+            import sklearn
 
             print("✅ MLOps pipeline health check: PASSED")
             print("   - Required dependencies available")
