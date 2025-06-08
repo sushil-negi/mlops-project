@@ -8,7 +8,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 import pandas as pd
 
@@ -292,11 +292,11 @@ class TrainingDataValidator:
 
 def main():
     """Main validation function"""
-    # Default to combined training data, fall back to test data
+    # Default to test data, fall back to others
     data_files = [
-        "data/combined_healthcare_training_data.json",
         "data/test_healthcare_training.json",
         "data/healthcare_training_data.json",
+        "data/combined_healthcare_training_data.json",
     ]
 
     validator = TrainingDataValidator()

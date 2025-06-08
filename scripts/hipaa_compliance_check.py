@@ -9,7 +9,7 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -169,10 +169,16 @@ class HIPAAComplianceChecker:
         crisis_keywords = [
             "suicide",
             "kill myself",
+            "kill me",
             "hurt myself",
+            "hurt me",
             "end my life",
-            "crisis",
-            "emergency",
+            "end everything",
+            "self-harm",
+            "self harm",
+            "don't want to live",
+            "want to die",
+            "better off dead",
         ]
         emergency_resources = ["988", "911", "crisis", "emergency", "hotline"]
 
