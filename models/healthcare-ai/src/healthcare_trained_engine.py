@@ -371,6 +371,16 @@ class HealthcareTrainedEngine:
         ):
             return "For helping an elderly parent with bed mobility: 1) Install bed rails for grip support, 2) Raise bed height to ease standing, 3) Use a bed assist handle, 4) Place a firm pillow behind back for leverage, 5) Consider a transfer pole for stability. Physical therapy can teach safe transfer techniques. ⚠️ Consult healthcare providers for personalized mobility assessments."
 
+        # Medication organization
+        if any(
+            term in user_lower
+            for term in ["medication", "medications", "pills", "medicine"]
+        ) and any(
+            term in user_lower
+            for term in ["organize", "organizing", "sort", "manage", "arrangement"]
+        ):
+            return "For organizing medications effectively: 1) Use a weekly pill organizer with AM/PM compartments, 2) Keep medications in original bottles for reference, 3) Create a medication list with dosages and times, 4) Store medications in a cool, dry place away from children, 5) Use color-coded labels for different times of day, 6) Review medications monthly and dispose of expired ones safely. ⚠️ Ask your pharmacist about medication therapy management services."
+
         # Medication and memory combination
         if "medication" in user_lower and any(
             term in user_lower for term in ["memory", "forget", "remember", "reminder"]
