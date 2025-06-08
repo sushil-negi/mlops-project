@@ -143,6 +143,12 @@ jobs:
           cp data/test_healthcare_training.json test_data/
         fi
 
+    - name: Start healthcare AI service for e2e tests
+      run: |
+        cd models/healthcare-ai-k8s
+        python src/k8s_service.py &
+        sleep 10
+
     - name: Validate model performance
       run: |
         cd tests
