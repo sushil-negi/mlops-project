@@ -9,7 +9,7 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 # Try to import ML libraries
 try:
-    import pandas as pd
     import numpy as np
+    import pandas as pd
     from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
     ML_AVAILABLE = True

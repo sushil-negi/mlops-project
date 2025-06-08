@@ -9,7 +9,7 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Any, Tuple
+from typing import Any, Dict, List, Tuple
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 # Try to import healthcare engine
 try:
-    import sys
     import os
+    import sys
 
     sys.path.insert(
         0, os.path.join(os.path.dirname(__file__), "../models/healthcare-ai/src")
