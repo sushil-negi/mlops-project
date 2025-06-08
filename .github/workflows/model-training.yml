@@ -132,7 +132,7 @@ jobs:
         "
 
     - name: Upload validation report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: data-validation-report
         path: data_validation_report.json
@@ -222,7 +222,7 @@ jobs:
         "
 
     - name: Upload training artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: training-artifacts
         path: |
@@ -243,7 +243,7 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Download training artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: training-artifacts
 
@@ -386,7 +386,7 @@ jobs:
         "
 
     - name: Upload comparison results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: model-comparison
         path: model_comparison.json
