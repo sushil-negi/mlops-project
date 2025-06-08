@@ -50,7 +50,7 @@ jobs:
         fi
 
     - name: Upload vulnerability reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: vulnerability-reports
@@ -101,7 +101,7 @@ jobs:
         semgrep --config=auto --json --output=semgrep-report.json models/ scripts/ services/
 
     - name: Upload security scan results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: security-scan-results
@@ -145,7 +145,7 @@ jobs:
         output-file: grype-results.json
 
     - name: Upload Grype results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: grype-scan-results
@@ -270,7 +270,7 @@ jobs:
         "
 
     - name: Upload compliance report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: compliance-report
@@ -331,7 +331,7 @@ jobs:
         "
 
     - name: Upload license report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: license-report
@@ -345,7 +345,7 @@ jobs:
     
     steps:
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: security-reports
 
@@ -388,7 +388,7 @@ jobs:
         echo "4. Implement additional security controls as needed" >> security-summary.md
 
     - name: Upload security summary
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-summary
         path: security-summary.md
