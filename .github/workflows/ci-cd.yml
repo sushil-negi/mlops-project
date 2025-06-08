@@ -61,12 +61,14 @@ jobs:
 
     - name: Security scan (bandit)
       run: |
-        bandit -r models/ scripts/ -f json -o bandit-report.json || echo '{"results": [], "metrics": {"_totals": {"loc": 0, "nosec": 0}}}' > bandit-report.json
+        echo '{"results": [], "metrics": {"_totals": {"loc": 0, "nosec": 0}}}' > bandit-report.json
+        bandit -r models/ scripts/ -f json -o bandit-report.json || true
         bandit -r models/ scripts/ --severity-level medium || true
 
     - name: Dependency vulnerability scan (safety)
       run: |
-        safety check --json --output safety-report.json || echo '{"report_meta": {"scan_target": "requirements", "vulnerabilities_found": 0}, "scanned_packages": [], "affected_packages": [], "vulnerabilities": []}' > safety-report.json
+        echo '{"report_meta": {"scan_target": "requirements", "vulnerabilities_found": 0}, "scanned_packages": [], "affected_packages": [], "vulnerabilities": []}' > safety-report.json
+        safety check --json --output safety-report.json || true
         safety check || true
 
     - name: Upload security reports
