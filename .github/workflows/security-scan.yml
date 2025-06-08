@@ -421,7 +421,7 @@ jobs:
 
     - name: Notify security team
       uses: 8398a7/action-slack@v3
-      if: failure() && secrets.SLACK_WEBHOOK_URL != ''
+      if: failure() && env.SLACK_WEBHOOK_URL != ''
       with:
         status: 'danger'
         text: 'Healthcare AI Security Scan found critical issues - immediate attention required'
