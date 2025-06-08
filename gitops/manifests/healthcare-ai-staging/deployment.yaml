@@ -26,8 +26,8 @@ spec:
     spec:
       containers:
       - name: healthcare-ai
-        image: nginx:alpine
-        imagePullPolicy: IfNotPresent
+        image: healthcare-ai:v2.0.2
+        imagePullPolicy: Never  # For local development with kind
         ports:
         - containerPort: 8080
           name: http
