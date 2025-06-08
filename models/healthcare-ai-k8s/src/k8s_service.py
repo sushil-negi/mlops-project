@@ -41,17 +41,28 @@ except ImportError:
 from pydantic import BaseModel
 
 # Import healthcare AI engine
-from src.healthcare_ai_engine import HealthcareAIEngine
+try:
+    from src.healthcare_ai_engine import HealthcareAIEngine
+except ImportError:
+    from healthcare_ai_engine import HealthcareAIEngine
 
 try:
-    from src.observability import (
-        get_logger,
-        get_tracer,
-        healthcare_span,
-        init_observability,
-        trace_healthcare_function,
-    )
-
+    try:
+        from src.observability import (
+            get_logger,
+            get_tracer,
+            healthcare_span,
+            init_observability,
+            trace_healthcare_function,
+        )
+    except ImportError:
+        from observability import (
+            get_logger,
+            get_tracer,
+            healthcare_span,
+            init_observability,
+            trace_healthcare_function,
+        )
     OBSERVABILITY_AVAILABLE = True
 except ImportError:
     OBSERVABILITY_AVAILABLE = False
