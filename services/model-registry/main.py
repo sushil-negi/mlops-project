@@ -3,18 +3,18 @@ Cirruslabs MLOps - Model Registry Service
 Main application entry point
 """
 
-from fastapi import FastAPI, HTTPException, Depends, status
+import logging
+import os
+from contextlib import asynccontextmanager
+from typing import Optional
+
+from api.routes import health, metrics, models
+from core.config import get_settings
+from core.database import database, init_db
+from core.logging import setup_logging
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
-import logging
-from typing import Optional
-import os
-
-from api.routes import models, health, metrics
-from core.database import database, init_db
-from core.config import get_settings
-from core.logging import setup_logging
 
 # Setup logging
 setup_logging()

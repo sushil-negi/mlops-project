@@ -2,16 +2,16 @@
 Health check endpoints
 """
 
+import logging
+import os
+import time
+from typing import Any, Dict
+
+import redis
+from core.config import get_settings
+from core.database import check_db_connection
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-import time
-import logging
-from typing import Dict, Any
-import redis
-import os
-
-from core.database import check_db_connection
-from core.config import get_settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

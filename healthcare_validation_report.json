@@ -1,0 +1,136 @@
+{
+  "validation_passed": true,
+  "timestamp": 1749416053.181908,
+  "results": {
+    "accuracy": {
+      "overall_accuracy": 0.22727272727272727,
+      "total_samples": 220,
+      "classification_report": {
+        "adl_mobility": {
+          "precision": 0.08695652173913043,
+          "recall": 0.6,
+          "f1-score": 0.1518987341772152,
+          "support": 20.0
+        },
+        "adl_self_care": {
+          "precision": 0.058823529411764705,
+          "recall": 0.05,
+          "f1-score": 0.05405405405405406,
+          "support": 20.0
+        },
+        "caregiver_burnout": {
+          "precision": 0.25,
+          "recall": 0.05,
+          "f1-score": 0.08333333333333333,
+          "support": 20.0
+        },
+        "caregiver_respite": {
+          "precision": 0.15384615384615385,
+          "recall": 0.1,
+          "f1-score": 0.12121212121212122,
+          "support": 20.0
+        },
+        "crisis_mental_health": {
+          "precision": 0.75,
+          "recall": 0.15,
+          "f1-score": 0.25,
+          "support": 20.0
+        },
+        "disability_equipment": {
+          "precision": 0.375,
+          "recall": 0.15,
+          "f1-score": 0.21428571428571427,
+          "support": 20.0
+        },
+        "disability_rights": {
+          "precision": 0.8,
+          "recall": 0.4,
+          "f1-score": 0.5333333333333333,
+          "support": 20.0
+        },
+        "mental_health_anxiety": {
+          "precision": 0.75,
+          "recall": 0.15,
+          "f1-score": 0.25,
+          "support": 20.0
+        },
+        "mental_health_depression": {
+          "precision": 1.0,
+          "recall": 0.15,
+          "f1-score": 0.2608695652173913,
+          "support": 20.0
+        },
+        "senior_medication": {
+          "precision": 0.8181818181818182,
+          "recall": 0.45,
+          "f1-score": 0.5806451612903226,
+          "support": 20.0
+        },
+        "senior_social": {
+          "precision": 0.625,
+          "recall": 0.25,
+          "f1-score": 0.35714285714285715,
+          "support": 20.0
+        },
+        "accuracy": 0.22727272727272727,
+        "macro avg": {
+          "precision": 0.5152552748344426,
+          "recall": 0.22727272727272727,
+          "f1-score": 0.25970680673148566,
+          "support": 220.0
+        },
+        "weighted avg": {
+          "precision": 0.5152552748344424,
+          "recall": 0.22727272727272727,
+          "f1-score": 0.25970680673148566,
+          "support": 220.0
+        }
+      }
+    },
+    "category_coverage": {
+      "required_categories": [
+        "adl_mobility",
+        "adl_self_care",
+        "senior_medication",
+        "senior_social",
+        "mental_health_anxiety",
+        "mental_health_depression",
+        "caregiver_respite",
+        "caregiver_burnout",
+        "disability_equipment",
+        "disability_rights",
+        "crisis_mental_health"
+      ],
+      "found_categories": [
+        "adl_mobility",
+        "senior_medication",
+        "caregiver_burnout",
+        "senior_social",
+        "mental_health_anxiety",
+        "mental_health_depression",
+        "crisis_mental_health",
+        "disability_equipment",
+        "disability_rights",
+        "caregiver_respite",
+        "adl_self_care"
+      ],
+      "missing_categories": [],
+      "low_coverage": [],
+      "coverage_complete": true
+    },
+    "response_quality": {
+      "total_responses": 220,
+      "responses_with_disclaimers": 220,
+      "responses_with_actionable_advice": 220,
+      "crisis_responses": 3,
+      "crisis_responses_with_resources": 3,
+      "average_response_length": 449.45454545454544
+    },
+    "model_safety": {
+      "bias_detection": true,
+      "harmful_content_filtering": true,
+      "privacy_protection": true,
+      "adversarial_robustness": true
+    }
+  }
+}

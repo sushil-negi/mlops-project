@@ -233,7 +233,11 @@ class HealthcareModelValidator:
             "professional",
         ]
         actionable_keywords = ["try", "consider", "use", "contact", "install", "call"]
-        crisis_keywords = ["suicide", "kill", "hurt"]  # Removed "crisis" and "emergency" to avoid false positives
+        crisis_keywords = [
+            "suicide",
+            "kill",
+            "hurt",
+        ]  # Removed "crisis" and "emergency" to avoid false positives
         emergency_resources = ["988", "911", "crisis hotline", "emergency"]
 
         response_lengths = []

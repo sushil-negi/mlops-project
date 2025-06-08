@@ -2,13 +2,14 @@
 Database configuration and connection management
 """
 
-import databases
-import sqlalchemy
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import MetaData
 import logging
 from typing import AsyncGenerator
+
+import databases
+import sqlalchemy
+from sqlalchemy import MetaData
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
 from .config import get_settings
 
@@ -50,8 +51,8 @@ async def init_db():
     """Initialize database tables"""
     try:
         # Import all models to register them with SQLAlchemy
-        from models import model, version, experiment, artifact
-        
+        from models import artifact, experiment, model, version
+
         # Create tables
         metadata.create_all(bind=engine)
         logger.info("Database tables created successfully")

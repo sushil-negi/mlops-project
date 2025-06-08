@@ -1,0 +1,10 @@
+{
+  "healthcare_compliance": {
+    "total_issues": 2,
+    "issues": [
+      "Potential unencrypted sensitive data in ./models/healthcare-ai/service.py",
+      "Potential unencrypted sensitive data in ./models/healthcare-ai/src/healthcare_model.py"
+    ],
+    "compliance_status": "ISSUES_FOUND"
+  }
+}

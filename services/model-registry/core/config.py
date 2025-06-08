@@ -2,11 +2,12 @@
 Configuration settings for Model Registry service
 """
 
-from pydantic_settings import BaseSettings
-from pydantic import Field, validator
-from typing import List, Optional
 import os
 from functools import lru_cache
+from typing import List, Optional
+
+from pydantic import Field, validator
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):

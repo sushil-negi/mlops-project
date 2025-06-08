@@ -3,12 +3,13 @@ Healthcare AI Training Pipeline with MLOps automation
 Implements automated training, validation, and model registration
 """
 
-import kfp
-from kfp import dsl, components
-from kfp.v2 import compiler
 import logging
-from typing import Dict, List, Optional
 import os
+from typing import Dict, List, Optional
+
+import kfp
+from kfp import components, dsl
+from kfp.v2 import compiler
 
 # Healthcare-specific validation thresholds
 HEALTHCARE_VALIDATION_CONFIG = {
@@ -28,9 +29,10 @@ def load_and_validate_data(
     output_data_path: str
 ) -> Dict[str, any]:
     """Load healthcare training data with privacy validation"""
-    import pandas as pd
     import json
     import logging
+
+    import pandas as pd
     
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -83,14 +85,15 @@ def train_healthcare_model(
 ) -> Dict[str, any]:
     """Train healthcare AI model with validation"""
     import json
+    import logging
+
     import joblib
+    import pandas as pd
     from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics import accuracy_score, classification_report
+    from sklearn.model_selection import cross_val_score, train_test_split
     from sklearn.naive_bayes import MultinomialNB
     from sklearn.pipeline import Pipeline
-    from sklearn.model_selection import cross_val_score, train_test_split
-    from sklearn.metrics import classification_report, accuracy_score
-    import pandas as pd
-    import logging
     
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
@@ -202,12 +205,13 @@ def register_model_mlflow(
     model_name: str = "healthcare-ai-model"
 ) -> Dict[str, str]:
     """Register validated model in MLflow with healthcare metadata"""
-    import mlflow
-    import mlflow.sklearn
-    import joblib
     import os
     from datetime import datetime
-    
+
+    import joblib
+    import mlflow
+    import mlflow.sklearn
+
     # MLflow tracking URI (assumes MLflow server running)
     mlflow.set_tracking_uri(os.getenv('MLFLOW_TRACKING_URI', 'http://localhost:5001'))
     
