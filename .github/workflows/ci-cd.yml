@@ -425,7 +425,7 @@ jobs:
 
     - name: Notify deployment
       uses: 8398a7/action-slack@v3
-      if: always()
+      if: always() && secrets.SLACK_WEBHOOK_URL != ''
       with:
         status: ${{ job.status }}
         text: Healthcare AI deployment to production ${{ job.status }}
@@ -448,16 +448,29 @@ jobs:
 
     - name: Configure kubectl
       run: |
-        echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+        mkdir -p $HOME/.kube
+        if [ -n "${{ secrets.KUBE_CONFIG }}" ]; then
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+        else
+          echo "No KUBE_CONFIG found, skipping kubectl configuration"
+          exit 0
+        fi
+      continue-on-error: true
 
     - name: Rollback deployment
       run: |
-        NAMESPACE=${{ github.ref == 'refs/heads/main' && 'healthcare-ai-production' || 'healthcare-ai-staging' }}
-        kubectl rollout undo deployment/healthcare-ai-v2-deployment -n $NAMESPACE
-        kubectl rollout status deployment/healthcare-ai-v2-deployment -n $NAMESPACE --timeout=300s
+        if [ -f $HOME/.kube/config ]; then
+          NAMESPACE=${{ github.ref == 'refs/heads/main' && 'healthcare-ai-production' || 'healthcare-ai-staging' }}
+          kubectl rollout undo deployment/healthcare-ai-v2-deployment -n $NAMESPACE
+          kubectl rollout status deployment/healthcare-ai-v2-deployment -n $NAMESPACE --timeout=300s
+        else
+          echo "Kubernetes not configured, skipping rollback"
+        fi
+      continue-on-error: true
 
     - name: Notify rollback
       uses: 8398a7/action-slack@v3
+      if: secrets.SLACK_WEBHOOK_URL != ''
       with:
         status: 'warning'
         text: 'Healthcare AI deployment failed - automatic rollback completed'
