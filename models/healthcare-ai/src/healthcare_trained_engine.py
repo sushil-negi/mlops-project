@@ -100,13 +100,16 @@ class HealthcareTrainedEngine:
             # Check for specific scenarios that should override ML classification
             contextual_response = self._check_specific_scenarios(user_input)
             if contextual_response:
-                return {
+                result = {
                     "response": contextual_response,
                     "category": "contextual_override",
                     "confidence": 0.95,
                     "method": "contextual_analysis",
                     "generation_time": time.time() - start_time,
                 }
+                # Cache the contextual response
+                self.response_cache[input_hash] = result
+                return result
 
             # Predict category using trained model
             predicted_category_idx = self.pipeline.predict([user_input])[0]
