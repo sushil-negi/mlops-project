@@ -435,10 +435,12 @@ class HealthcareTrainedEngine:
             return "Eating adaptations for independence: 1) Weighted utensils for hand tremors, 2) Built-up handles for weak grip strength, 3) Plate guards to prevent food spilling, 4) Non-slip mats under plates and bowls, 5) Adaptive cups with lids or straws, 6) Rocker knives for one-handed cutting. Occupational therapists can assess specific needs. ⚠️ Proper adaptive equipment significantly improves dining independence and dignity."
 
         # Pill reminder systems
-        if ("pill" in user_lower and "reminder" in user_lower) or ("medication" in user_lower and "memory loss" in user_lower):
+        if ("pill" in user_lower and "reminder" in user_lower) or (
+            "medication" in user_lower and "memory loss" in user_lower
+        ):
             return "Pill reminder systems for memory loss: 1) Automated pill dispensers with alarms and locked compartments, 2) Smartphone apps with multiple daily alerts, 3) Visual medication calendars with pictures, 4) Family member text reminders, 5) Pharmacy auto-refill and reminder services, 6) Smart home devices with voice reminders. ⚠️ For severe memory issues, supervised medication administration may be necessary."
 
-        # Workplace accommodation rights  
+        # Workplace accommodation rights
         if "workplace accommodation" in user_lower and "rights" in user_lower:
             return "Workplace accommodation rights: 1) Employers must provide reasonable accommodations under ADA, 2) Submit written accommodation request to HR, 3) Provide medical documentation if requested, 4) Examples: flexible scheduling, adaptive equipment, remote work, 5) Cannot be discriminated against for requesting accommodations, 6) File EEOC complaint if rights violated. ⚠️ Contact disability rights organizations for free legal advice and advocacy support."
 
