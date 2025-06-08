@@ -1,0 +1,156 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: healthcare-ai-rollout
+  namespace: healthcare-ai-prod
+spec:
+  replicas: 3
+  strategy:
+    blueGreen:
+      activeService: healthcare-ai-active
+      previewService: healthcare-ai-preview
+      autoPromotionEnabled: false
+      scaleDownDelaySeconds: 30
+      prePromotionAnalysis:
+        templates:
+        - templateName: healthcare-success-rate
+        args:
+        - name: service-name
+          value: healthcare-ai-preview.healthcare-ai-prod.svc.cluster.local
+      postPromotionAnalysis:
+        templates:
+        - templateName: healthcare-success-rate
+        args:
+        - name: service-name
+          value: healthcare-ai-active.healthcare-ai-prod.svc.cluster.local
+  selector:
+    matchLabels:
+      app: healthcare-ai
+  template:
+    metadata:
+      labels:
+        app: healthcare-ai
+    spec:
+      containers:
+      - name: healthcare-ai
+        image: healthcare-ai:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: MLFLOW_TRACKING_URI
+          value: "http://mlflow.mlops-healthcare.svc.cluster.local:5000"
+        - name: REDIS_HOST
+          value: "redis.mlops-healthcare.svc.cluster.local"
+        - name: MONITORING_ENABLED
+          value: "true"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: healthcare-ai-active
+  namespace: healthcare-ai-prod
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: healthcare-ai
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: healthcare-ai-preview
+  namespace: healthcare-ai-prod
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: healthcare-ai
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: healthcare-success-rate
+  namespace: healthcare-ai-prod
+spec:
+  args:
+  - name: service-name
+  metrics:
+  - name: success-rate
+    interval: 60s
+    count: 3
+    successCondition: result[0] >= 0.95
+    failureLimit: 1
+    provider:
+      prometheus:
+        address: http://prometheus.mlops-monitoring.svc.cluster.local:9090
+        query: |
+          sum(rate(healthcare_ai_predictions_total{service="{{args.service-name}}"}[5m])) -
+          sum(rate(healthcare_ai_errors_total{service="{{args.service-name}}"}[5m])) /
+          sum(rate(healthcare_ai_predictions_total{service="{{args.service-name}}"}[5m]))
+  - name: crisis-detection-rate
+    interval: 60s
+    count: 3
+    successCondition: result[0] >= 0.99
+    failureLimit: 1
+    provider:
+      prometheus:
+        address: http://prometheus.mlops-monitoring.svc.cluster.local:9090
+        query: |
+          healthcare_ai_crisis_detection_rate{service="{{args.service-name}}"}
+  - name: response-quality
+    interval: 60s
+    count: 3
+    successCondition: result[0] >= 0.80
+    failureLimit: 1
+    provider:
+      prometheus:
+        address: http://prometheus.mlops-monitoring.svc.cluster.local:9090
+        query: |
+          healthcare_ai_response_quality_score{service="{{args.service-name}}"}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: healthcare-ai-ingress
+  namespace: healthcare-ai-prod
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+spec:
+  tls:
+  - hosts:
+    - healthcare-ai.yourdomain.com
+    secretName: healthcare-ai-tls
+  rules:
+  - host: healthcare-ai.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: healthcare-ai-active
+            port:
+              number: 80

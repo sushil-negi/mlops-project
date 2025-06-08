@@ -1,12 +1,27 @@
-# Cirruslabs MLOps Platform Makefile
+# Healthcare AI MLOps Project Makefile
 
-.PHONY: help build test deploy clean
+.PHONY: help build test deploy clean test-unit test-integration test-e2e test-coverage install-deps lint format start-services stop-services
 
 # Default target
 help: ## Show this help message
-	@echo "Cirruslabs MLOps Platform"
+	@echo "Healthcare AI MLOps Project"
+	@echo "=========================="
+	@echo ""
 	@echo "Available targets:"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo "  help             Show this help message"
+	@echo "  install-deps     Install all dependencies"
+	@echo "  test             Run all tests with coverage"
+	@echo "  test-unit        Run unit tests only"
+	@echo "  test-integration Run integration tests only"
+	@echo "  test-e2e         Run end-to-end tests only"
+	@echo "  test-coverage    Generate coverage report only"
+	@echo "  lint             Run code linting"
+	@echo "  clean            Clean test artifacts"
+	@echo "  start-services   Start all required services"
+	@echo "  stop-services    Stop all services"
+	@echo "  train-model      Train healthcare model"
+	@echo "  docker-up        Start services with Docker Compose"
+	@echo "  docker-down      Stop Docker services"
 
 # Variables
 DOCKER_REGISTRY ?= localhost:5000
@@ -32,19 +47,73 @@ build-%: ## Build specific service
 	docker push $(DOCKER_REGISTRY)/mlops-$*:$(VERSION)
 
 # Test targets
-test: test-unit test-integration ## Run all tests
+test: ## Run all tests with coverage
+	@echo "Running all tests with coverage..."
+	source venv/bin/activate && python3 scripts/run_tests.py
 
-test-unit: ## Run unit tests
+test-unit: ## Run unit tests only
 	@echo "Running unit tests..."
-	cd tests/unit && python -m pytest -v
+	source venv/bin/activate && python3 scripts/run_tests.py --unit
 
-test-integration: ## Run integration tests
+test-integration: ## Run integration tests only
 	@echo "Running integration tests..."
-	cd tests/integration && python -m pytest -v
+	source venv/bin/activate && python3 scripts/run_tests.py --integration
 
-test-e2e: ## Run end-to-end tests
-	@echo "Running E2E tests..."
-	cd tests/e2e && python -m pytest -v
+test-e2e: ## Run end-to-end tests only
+	@echo "Running end-to-end tests..."
+	source venv/bin/activate && python3 scripts/run_tests.py --e2e
+
+test-coverage: ## Generate coverage report only
+	@echo "Generating coverage report..."
+	source venv/bin/activate && python3 scripts/run_tests.py --coverage-only
+
+# Install dependencies
+install-deps: ## Install all dependencies
+	@echo "Installing project dependencies..."
+	source venv/bin/activate && pip install -r tests/requirements.txt
+	source venv/bin/activate && pip install flake8 black isort
+
+# Code quality
+lint: ## Run code linting
+	@echo "Running code linting..."
+	source venv/bin/activate && flake8 models/demo-llm/src/ scripts/ --max-line-length=120 --ignore=E501,W503
+
+format: ## Format code
+	@echo "Formatting code..."
+	source venv/bin/activate && black models/demo-llm/src/ scripts/
+	source venv/bin/activate && isort models/demo-llm/src/ scripts/
+
+# Healthcare AI specific targets
+train-model: ## Train healthcare model
+	@echo "Training healthcare model..."
+	source venv/bin/activate && python3 scripts/train_real_healthcare_model.py
+
+start-services: ## Start all required services
+	@echo "Starting healthcare AI services..."
+	source venv/bin/activate && nohup mlflow server --host 0.0.0.0 --port 5001 --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns > mlflow.log 2>&1 &
+	source venv/bin/activate && nohup python3 scripts/start_healthcare_ai_service.py > healthcare_ai.log 2>&1 &
+	@sleep 5
+	@echo "Services started. Check logs: mlflow.log, healthcare_ai.log"
+
+stop-services: ## Stop all services
+	@echo "Stopping services..."
+	pkill -f "mlflow server" || true
+	pkill -f "start_healthcare_ai_service" || true
+	@echo "Services stopped."
+
+# Cleanup
+clean: ## Clean test artifacts
+	@echo "Cleaning test artifacts..."
+	rm -rf htmlcov/
+	rm -rf .coverage
+	rm -rf coverage.xml
+	rm -rf .pytest_cache/
+	rm -rf tests/__pycache__/
+	rm -rf tests/unit/__pycache__/
+	rm -rf tests/integration/__pycache__/
+	rm -rf tests/e2e/__pycache__/
+	find . -name "*.pyc" -delete
+	find . -name "__pycache__" -type d -delete
 
 # Deployment targets
 deploy-infrastructure: ## Deploy infrastructure components

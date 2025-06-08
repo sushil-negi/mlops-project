@@ -1,0 +1,99 @@
+# MLflow System Metrics Configuration
+
+# System metrics collection settings
+system_metrics:
+  enabled: true
+  sampling_interval: 10  # seconds
+  samples_before_logging: 1
+  
+  # Metrics to collect
+  metrics:
+    cpu:
+      enabled: true
+      collect_per_core: true
+    
+    memory:
+      enabled: true
+      include_swap: true
+    
+    disk:
+      enabled: true
+      paths: ["/", "/tmp"]
+    
+    gpu:
+      enabled: true
+      collect_temperature: true
+      collect_power: true
+      collect_memory_details: true
+    
+    network:
+      enabled: false  # Can be noisy in containerized environments
+    
+    process:
+      enabled: true
+      collect_children: false
+
+# Artifact logging configuration
+artifacts:
+  enabled: true
+  
+  # Automatic artifact collection
+  auto_log:
+    model_checkpoints: true
+    training_plots: true
+    system_plots: true
+    model_summary: true
+    training_data_sample: false  # Can be large
+    
+  # Storage settings
+  storage:
+    compress_plots: true
+    plot_format: "png"
+    plot_dpi: 150
+    max_artifact_size_mb: 100
+
+# Autolog configuration
+autolog:
+  pytorch:
+    enabled: true
+    log_models: true
+    log_datasets: false  # Can be large
+    log_model_signatures: true
+    log_input_examples: true
+    log_every_n_epoch: 1
+    
+  sklearn:
+    enabled: true
+    log_models: true
+    log_input_examples: true
+    log_model_signatures: true
+    
+  tensorflow:
+    enabled: false
+    
+  keras:
+    enabled: false
+
+# Performance monitoring
+monitoring:
+  enabled: true
+  
+  # Alert thresholds
+  thresholds:
+    cpu_percent: 90
+    memory_percent: 85
+    gpu_memory_percent: 90
+    gpu_temperature: 80
+    
+  # Performance tracking
+  track_training_speed: true
+  track_model_size: true
+  track_memory_usage: true
+
+# Environment variables to set
+environment_variables:
+  MLFLOW_ENABLE_SYSTEM_METRICS_LOGGING: "true"
+  MLFLOW_SYSTEM_METRICS_SAMPLING_INTERVAL: "10"
+  MLFLOW_SYSTEM_METRICS_SAMPLES_BEFORE_LOGGING: "1"
+  MLFLOW_ARTIFACT_UPLOAD_DOWNLOAD_TIMEOUT: "600"
+  MLFLOW_MULTIPART_UPLOAD_CHUNK_SIZE: "104857600"  # 100MB

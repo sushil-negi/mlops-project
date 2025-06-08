@@ -1,0 +1,241 @@
+name: Healthcare AI MLOps Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'models/healthcare-ai/**'
+      - 'data/**'
+      - 'pipelines/**'
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Retrain model weekly
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+    inputs:
+      force_retrain:
+        description: 'Force model retraining'
+        required: false
+        default: 'false'
+
+env:
+  MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+  KUBERNETES_NAMESPACE: healthcare-ai-prod
+  
+jobs:
+  data-validation:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        pip install pandas numpy scikit-learn pytest great-expectations
+    
+    - name: Validate training data
+      run: |
+        python scripts/validate_training_data.py
+    
+    - name: Data quality checks
+      run: |
+        python scripts/data_quality_checks.py
+
+  model-training:
+    needs: data-validation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event.inputs.force_retrain == 'true' || contains(github.event.head_commit.message, '[retrain]')
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        pip install -r models/healthcare-ai/requirements.txt
+        pip install kfp mlflow
+    
+    - name: Run training pipeline
+      run: |
+        python pipelines/healthcare_training_pipeline.py
+        
+    - name: Submit Kubeflow pipeline
+      env:
+        KUBEFLOW_ENDPOINT: ${{ secrets.KUBEFLOW_ENDPOINT }}
+      run: |
+        python scripts/submit_training_pipeline.py
+
+  healthcare-validation:
+    needs: model-training
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        pip install -r models/healthcare-ai/requirements.txt
+        pip install pytest mlflow
+    
+    - name: Healthcare-specific model validation
+      run: |
+        python tests/healthcare_model_validation.py
+        
+    - name: Crisis detection validation
+      run: |
+        python tests/crisis_detection_validation.py
+    
+    - name: Response quality validation
+      run: |
+        python tests/response_quality_validation.py
+
+  security-compliance:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: HIPAA compliance check
+      run: |
+        python scripts/hipaa_compliance_check.py
+        
+    - name: Security scan
+      uses: securecodewarrior/github-action-add-sarif@v1
+      with:
+        sarif-file: 'security-scan-results.sarif'
+
+  build-and-test:
+    needs: [data-validation, healthcare-validation]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build Docker image
+      run: |
+        docker build -t healthcare-ai:${{ github.sha }} models/healthcare-ai/
+    
+    - name: Run container tests
+      run: |
+        docker run --rm -v $(pwd)/tests:/tests healthcare-ai:${{ github.sha }} pytest /tests/
+    
+    - name: Push to registry
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        docker tag healthcare-ai:${{ github.sha }} ${{ secrets.DOCKER_REGISTRY }}/healthcare-ai:${{ github.sha }}
+        docker tag healthcare-ai:${{ github.sha }} ${{ secrets.DOCKER_REGISTRY }}/healthcare-ai:latest
+        docker push ${{ secrets.DOCKER_REGISTRY }}/healthcare-ai:${{ github.sha }}
+        docker push ${{ secrets.DOCKER_REGISTRY }}/healthcare-ai:latest
+
+  deploy-staging:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v3
+    
+    - name: Deploy to staging
+      env:
+        KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+      run: |
+        echo "$KUBE_CONFIG" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+        
+        # Update image in deployment
+        kubectl set image deployment/healthcare-ai-staging healthcare-ai=${{ secrets.DOCKER_REGISTRY }}/healthcare-ai:${{ github.sha }} -n healthcare-ai-staging
+        
+        # Wait for rollout
+        kubectl rollout status deployment/healthcare-ai-staging -n healthcare-ai-staging
+
+  integration-tests:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Run integration tests against staging
+      env:
+        STAGING_URL: ${{ secrets.STAGING_URL }}
+      run: |
+        python tests/integration/test_staging_deployment.py
+
+  deploy-production:
+    needs: integration-tests
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v3
+    
+    - name: Install Argo Rollouts kubectl plugin
+      run: |
+        curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+        chmod +x ./kubectl-argo-rollouts-linux-amd64
+        sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+    
+    - name: Deploy to production with blue-green
+      env:
+        KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+      run: |
+        echo "$KUBE_CONFIG" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+        
+        # Update rollout image
+        kubectl argo rollouts set image healthcare-ai-rollout healthcare-ai=${{ secrets.DOCKER_REGISTRY }}/healthcare-ai:${{ github.sha }} -n healthcare-ai-prod
+        
+        # Wait for analysis to complete
+        kubectl argo rollouts get rollout healthcare-ai-rollout -n healthcare-ai-prod -w
+        
+        # Promote if analysis passes
+        kubectl argo rollouts promote healthcare-ai-rollout -n healthcare-ai-prod
+
+  post-deployment-monitoring:
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Setup monitoring alerts
+      run: |
+        # Configure post-deployment monitoring
+        curl -X POST ${{ secrets.MONITORING_WEBHOOK }} \
+          -H "Content-Type: application/json" \
+          -d '{"deployment": "healthcare-ai", "version": "${{ github.sha }}", "environment": "production"}'
+    
+    - name: Notify deployment
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#healthcare-ai-deployments'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        message: |
+          Healthcare AI model deployed to production
+          Version: ${{ github.sha }}
+          Branch: ${{ github.ref }}
+          Status: ${{ job.status }}

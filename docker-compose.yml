@@ -5,16 +5,15 @@ services:
   postgres:
     image: postgres:14
     environment:
-      POSTGRES_DB: mlops
-      POSTGRES_USER: mlops
-      POSTGRES_PASSWORD: mlops123
+      POSTGRES_DB: mlflow
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow123
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infrastructure/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mlops"]
+      test: ["CMD-SHELL", "pg_isready -U mlflow"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -31,18 +30,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # Message Queue
-  rabbitmq:
-    image: rabbitmq:3-management
-    environment:
-      RABBITMQ_DEFAULT_USER: mlops
-      RABBITMQ_DEFAULT_PASS: mlops123
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-
   # Storage
   minio:
     image: minio/minio:latest
@@ -55,111 +42,71 @@ services:
       - "9001:9001"
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
-  # Monitoring
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./infrastructure/docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: admin123
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./infrastructure/docker/grafana/provisioning:/etc/grafana/provisioning
-
-  # MLOps Services
-  model-registry:
+  # MLflow Tracking Server
+  mlflow:
     build:
-      context: ./services/model-registry
+      context: ./services/mlflow
       dockerfile: Dockerfile
-    ports:
-      - "8001:8000"
+    container_name: mlops-mlflow
     environment:
-      DATABASE_URL: postgresql://mlops:mlops123@postgres:5432/mlops
-      REDIS_URL: redis://redis:6379/0
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin123
+      - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow:mlflow123@postgres:5432/mlflow
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=s3://mlflow-artifacts/
+      - AWS_ACCESS_KEY_ID=mlflow
+      - AWS_SECRET_ACCESS_KEY=mlflow123
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_S3_VERIFY_SSL=false
+      - MLFLOW_S3_IGNORE_TLS=true
+      - MLFLOW_ENABLE_SYSTEM_METRICS_LOGGING=true
+      - MLFLOW_SYSTEM_METRICS_SAMPLING_INTERVAL=10
+      - MLFLOW_SYSTEM_METRICS_SAMPLES_BEFORE_LOGGING=1
+    ports:
+      - "5001:5000"
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
+      minio:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Healthcare AI Model Service
+  healthcare-ai:
+    build:
+      context: ./models/healthcare-ai
+      dockerfile: Dockerfile
+    container_name: mlops-healthcare-ai
+    ports:
+      - "8080:8000"
+    environment:
+      - MODEL_NAME=healthcare-ai
+      - MODEL_VERSION=3.0.0
+      - ENVIRONMENT=production
+      - MLFLOW_TRACKING_URI=http://mlflow:5001
+    depends_on:
+      - mlflow
+    volumes:
+      - model_artifacts:/app/artifacts
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  pipeline-orchestrator:
-    build:
-      context: ./services/pipeline-orchestrator
-      dockerfile: Dockerfile
-    ports:
-      - "8002:8000"
-    environment:
-      DATABASE_URL: postgresql://mlops:mlops123@postgres:5432/mlops
-      REDIS_URL: redis://redis:6379/1
-      RABBITMQ_URL: amqp://mlops:mlops123@rabbitmq:5672/
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_started
-
-  monitoring-engine:
-    build:
-      context: ./services/monitoring-engine
-      dockerfile: Dockerfile
-    ports:
-      - "8003:8000"
-    environment:
-      DATABASE_URL: postgresql://mlops:mlops123@postgres:5432/mlops
-      PROMETHEUS_URL: http://prometheus:9090
-      REDIS_URL: redis://redis:6379/2
-    depends_on:
-      postgres:
-        condition: service_healthy
-      prometheus:
-        condition: service_started
-
-  api-gateway:
-    build:
-      context: ./services/api-gateway
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8000"
-    environment:
-      MODEL_REGISTRY_URL: http://model-registry:8000
-      PIPELINE_ORCHESTRATOR_URL: http://pipeline-orchestrator:8000
-      MONITORING_ENGINE_URL: http://monitoring-engine:8000
-    depends_on:
-      - model-registry
-      - pipeline-orchestrator
-      - monitoring-engine
 
 volumes:
   postgres_data:
   redis_data:
-  rabbitmq_data:
   minio_data:
-  prometheus_data:
-  grafana_data:
+  model_artifacts:
 
 networks:
   default:

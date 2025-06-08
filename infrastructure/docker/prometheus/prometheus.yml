@@ -1,0 +1,70 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alerts.yml"
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Demo LLM Model
+  - job_name: 'demo-llm'
+    static_configs:
+      - targets: ['demo-llm:8000']
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+  # Model Registry
+  - job_name: 'model-registry'
+    static_configs:
+      - targets: ['model-registry:8000']
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Pipeline Orchestrator
+  - job_name: 'pipeline-orchestrator'
+    static_configs:
+      - targets: ['pipeline-orchestrator:8000']
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Monitoring Engine
+  - job_name: 'monitoring-engine'
+    static_configs:
+      - targets: ['monitoring-engine:8000']
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # MLflow
+  - job_name: 'mlflow'
+    static_configs:
+      - targets: ['mlflow:5000']
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Infrastructure services
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 30s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+
+  - job_name: 'minio'
+    static_configs:
+      - targets: ['minio:9000']
+    scrape_interval: 30s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # Add alertmanager if needed
+          # - alertmanager:9093

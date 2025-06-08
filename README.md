@@ -1,379 +1,194 @@
-# Cirruslabs MLOps Platform
+# Healthcare AI Assistant Platform
 
-Enterprise-grade Machine Learning Operations platform designed for compliance, quality, and streamlined ML workflows.
+A sophisticated healthcare chatbot system that provides specific, contextual responses for healthcare-related queries using machine learning and rule-based contextual overrides.
 
 ## Overview
 
-This platform provides a collaborative, reproducible, and monitored ML workflow that enables enterprises to:
-- **Reduce time-to-market by 40%**
-- **Improve model accuracy by 25%**
-- **Save 30% on operational costs**
-- **Boost team productivity by 50%**
+This platform provides intelligent healthcare assistance through:
+- **ML-powered classification** across 11 healthcare categories
+- **Contextual response generation** for specific scenarios (bed mobility, medication management, etc.)
+- **Crisis detection and emergency response** with immediate 988 hotline connection
+- **Professional healthcare guidance** with appropriate medical disclaimers
+- **Comprehensive testing suite** ensuring 80%+ code coverage
 
-## Architecture
-
-The platform follows a modular, microservices-based architecture with the following core components:
+## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Enterprise Integration Layer                  │
-│  (API Gateway, Authentication, Enterprise Connectors)            │
-└─────────────────────────────────────────────────────────────────┘
-                                    │
-┌─────────────────────────────────────────────────────────────────┐
-│                        MLOps Platform Core                        │
-├─────────────────┬─────────────────┬─────────────────┬──────────┤
-│  Model Registry │   Pipeline      │    Monitoring   │ Security │
-│   & Versioning  │  Orchestrator   │   & Analytics   │  Module  │
-└─────────────────┴─────────────────┴─────────────────┴──────────┘
-                                    │
-┌─────────────────────────────────────────────────────────────────┐
-│                      Infrastructure Layer                         │
-│  (Kubernetes, Container Registry, Storage, Compute Resources)    │
-└─────────────────────────────────────────────────────────────────┘
+Healthcare AI (Port 8080)
+├── ML Model: TfidfVectorizer + MultinomialNB (98.18% accuracy)
+├── Contextual Override System
+├── Crisis Detection
+├── Response Caching
+└── Professional Healthcare Responses (55+)
+
+Supporting Services:
+├── MLflow (Port 5001) - Experiment tracking
+├── PostgreSQL (Port 5432) - Metadata storage  
+├── MinIO (Ports 9000-9001) - Artifact storage
+└── Redis (Port 6379) - Caching layer
 ```
 
-## Core Modules
+## Quick Start
 
-### 1. Model Registry Service (`/services/model-registry`)
-- Centralized model versioning and lifecycle management
-- Model lineage tracking and metadata storage
-- Approval workflows and rollback capabilities
+### Prerequisites
+- Docker and Docker Compose
+- Python 3.11+ (for development)
 
-### 2. Pipeline Orchestrator (`/services/pipeline-orchestrator`)
-- ML workflow execution and scheduling
-- CI/CD integration for ML pipelines
-- Automated testing and deployment
-
-### 3. Monitoring Engine (`/services/monitoring-engine`)
-- Real-time model performance tracking
-- Automated drift detection
-- Alerting and analytics dashboards
-
-### 4. Security & Compliance (`/services/security-compliance`)
-- Zero-trust security architecture
-- RBAC and audit logging
-- Regulatory compliance automation
-
-### 5. Data Pipeline (`/services/data-pipeline`)
-- Data ingestion and transformation
-- Feature store management
-- Data quality validation
-
-### 6. Model Serving (`/services/model-serving`)
-- Scalable model deployment
-- A/B testing capabilities
-- Edge deployment support
-
-## 🚀 Quick Start with Demo LLM
-
-We've included a complete demo LLM model to showcase the platform capabilities!
-
-### One-Command Demo
+### Running the System
 
 ```bash
-# Run the complete MLOps pipeline demo
-./scripts/run-demo-pipeline.sh
+# Start all services
+docker compose up -d
+
+# Check service health
+curl http://localhost:8080/health
+
+# Test the chat interface
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"message": "My elderly father has trouble getting out of bed"}' \
+  http://localhost:8080/chat
 ```
 
-This will:
-1. ✅ Build and deploy the demo LLM model
-2. ✅ Execute the complete training pipeline
-3. ✅ Register the model in the registry
-4. ✅ Deploy to staging environment
-5. ✅ Set up monitoring and alerts
-6. ✅ Provide access to all dashboards
+### Access Points
+- **Chat Interface**: http://localhost:8080
+- **Health Check**: http://localhost:8080/health
+- **Statistics**: http://localhost:8080/stats
+- **MLflow UI**: http://localhost:5001
 
-### Step-by-Step Setup
+## Key Features
 
-#### 1. Prerequisites
-- Kubernetes cluster (1.21+)
-- Docker
-- kubectl
-- Helm 3.0+
+### 🎯 Contextual Response System
+Provides specific, actionable responses for common healthcare scenarios:
+- Elderly bed mobility assistance
+- Medication reminders for memory issues
+- Caregiver overwhelm support  
+- Senior exercise recommendations
+- Adaptive eating equipment
+- Wheelchair transfer guidance
+- Mental health support (depression, anxiety)
 
-#### 2. Deploy MLOps Platform
+### 🚨 Crisis Detection
+Automatically detects suicide/self-harm mentions and provides:
+- Immediate 988 crisis line connection
+- Emergency resources and support
+- 24/7 crisis intervention guidance
 
+### 🧠 ML Classification
+- **11 Healthcare Categories**: ADL, mental health, medications, crisis intervention
+- **98.18% Accuracy**: Trained TfidfVectorizer + MultinomialNB model
+- **55+ Professional Responses**: Diverse, healthcare-appropriate guidance
+
+### 🔒 Safety Features
+- Professional medical disclaimers on all responses
+- Crisis intervention protocols
+- Healthcare provider consultation recommendations
+- HIPAA-compliant response patterns
+
+## Testing
+
+### Run Tests
 ```bash
-# Clone and setup
-git clone <repository-url>
-cd cirruslabs-mlops
+# Unit tests
+python -m pytest tests/unit/ -v
 
-# Setup development environment
-./scripts/setup-dev.sh
+# Integration tests  
+python -m pytest tests/integration/ -v
 
-# Deploy infrastructure and services
-make deploy-infrastructure
-make deploy-services
+# E2E tests (requires services running)
+python -m pytest tests/e2e/ -v
+
+# All tests with coverage
+python -m pytest tests/ --cov=models/healthcare-ai/src --cov-report=html
 ```
 
-#### 3. Run Demo Pipeline
+### Test Coverage
+- **82% coverage** on core healthcare engine
+- **25+ unit tests** for contextual overrides
+- **Integration tests** for ML classification
+- **E2E tests** for complete system validation
 
+## Development
+
+### Project Structure
+```
+├── models/healthcare-ai/          # Core AI service
+│   ├── src/                      # Python source code
+│   ├── Dockerfile               # Container configuration
+│   └── requirements.txt         # Dependencies
+├── tests/                        # Comprehensive test suite
+├── data/                        # Training datasets
+├── scripts/                     # Utility scripts
+└── infrastructure/             # Docker & K8s configs
+```
+
+### Training New Models
 ```bash
-# Execute complete demo
-./scripts/run-demo-pipeline.sh
+# Generate training data
+python scripts/train_real_healthcare_model.py
 
-# Or run individual steps
-./scripts/run-demo-pipeline.sh build    # Build model image
-./scripts/run-demo-pipeline.sh train    # Run training pipeline
-./scripts/run-demo-pipeline.sh deploy   # Deploy to staging
-./scripts/run-demo-pipeline.sh test     # Test deployment
+# Train with MLflow tracking
+python scripts/train_with_mlflow_logging.py
 ```
 
-#### 4. Test Your Model
+### Adding New Contextual Scenarios
+1. Update `_check_specific_scenarios()` in `healthcare_trained_engine.py`
+2. Add corresponding unit tests
+3. Update test suite documentation
 
-```bash
-# Run comprehensive tests
-./scripts/quick-test.sh
+## Healthcare Categories
 
-# Test specific endpoints
-./scripts/quick-test.sh generate
-./scripts/quick-test.sh performance
-```
+The system handles 11 specialized healthcare categories:
+- **ADL Mobility**: Transfer assistance, balance, walking aids
+- **ADL Self-Care**: Bathing, dressing, eating, grooming
+- **Senior Medication**: Pill organization, reminders, safety
+- **Senior Social**: Isolation, community connection, activities
+- **Mental Health**: Anxiety and depression support
+- **Caregiver Support**: Respite care, burnout prevention
+- **Disability Equipment**: Adaptive tools, accessibility
+- **Disability Rights**: ADA accommodations, advocacy
+- **Crisis Mental Health**: Emergency intervention, 988 support
 
-## 📊 Access Dashboards
+## Response Quality Standards
 
-After running the demo, access these dashboards:
+All responses include:
+- ✅ Numbered, actionable steps
+- ✅ Professional healthcare disclaimers (⚠️)
+- ✅ Specific, contextual advice
+- ✅ Safety considerations
+- ✅ Professional consultation recommendations
 
-```bash
-# Model API (test your LLM)
-kubectl port-forward -n mlops-platform svc/demo-llm-staging 8080:8000
-# Visit: http://localhost:8080/docs
+## Configuration
 
-# Model Registry
-kubectl port-forward -n mlops-platform svc/model-registry 8081:8000
-# Visit: http://localhost:8081/docs
+### Environment Variables
+- `HEALTHCARE_SERVICE_URL`: Service endpoint (default: http://localhost:8080)
+- `MLFLOW_TRACKING_URI`: MLflow server URL
+- `POSTGRES_*`: Database configuration
+- `MINIO_*`: Object storage configuration
 
-# MLflow (experiment tracking)
-kubectl port-forward -n mlops-platform svc/mlflow 5000:5000
-# Visit: http://localhost:5000
+### Docker Services
+All services are configured via `docker-compose.yml`:
+- Healthcare AI service with health checks
+- MLflow server with PostgreSQL backend
+- MinIO for artifact storage
+- Redis for caching
 
-# Grafana (monitoring)
-kubectl port-forward -n mlops-platform svc/grafana 3000:3000
-# Visit: http://localhost:3000 (admin/admin123)
+## Contributing
 
-# Argo Workflows
-kubectl port-forward -n argo svc/argo-server 2746:2746
-# Visit: http://localhost:2746
-```
+1. Add new contextual scenarios in `healthcare_trained_engine.py`
+2. Write corresponding tests in `tests/unit/`
+3. Update documentation
+4. Run full test suite before committing
+5. Ensure 80%+ test coverage maintained
 
-## 🤖 Demo LLM Model
+## License
 
-The included demo LLM showcases a complete ML lifecycle:
+This project is for educational and demonstration purposes.
 
-### Features
-- **Lightweight GPT-2 based architecture** (~124M parameters)
-- **FastAPI serving** with comprehensive API
-- **MLflow integration** for experiment tracking
-- **Automated registration** with model registry
-- **Production-ready deployment** with monitoring
-- **Performance testing** and validation
+## Support
 
-### API Example
-```bash
-# Generate text
-curl -X POST "http://localhost:8080/generate" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "text": "The future of machine learning is",
-       "max_length": 100,
-       "temperature": 0.7
-     }'
-```
+For technical issues:
+- Check service health: `curl http://localhost:8080/health`
+- View logs: `docker logs mlops-healthcare-ai`
+- Review test output: `python -m pytest tests/ -v`
 
-### Training Pipeline
-```bash
-# View pipeline steps
-argo get <workflow-name>
-
-# Watch pipeline execution  
-argo watch <workflow-name>
-
-# View logs
-argo logs <workflow-name>
-```
-
-## 🔧 Development
-
-### Building Services
-```bash
-# Build all services
-make build
-
-# Build specific service
-make build-service SERVICE=model-registry
-```
-
-### Running Tests
-```bash
-# Run all tests
-make test
-
-# Run specific test suite
-make test-unit
-make test-integration
-make test-e2e
-```
-
-### Local Development
-```bash
-# Start local development environment
-make dev-deploy
-
-# Run services locally
-docker-compose up -d
-```
-
-## 📋 Project Structure
-
-```
-cirruslabs-mlops/
-├── services/                    # Microservices
-│   ├── model-registry/         # Model registry service
-│   ├── pipeline-orchestrator/  # Pipeline orchestration
-│   ├── monitoring-engine/      # Monitoring and analytics
-│   ├── security-compliance/    # Security and compliance
-│   ├── data-pipeline/          # Data processing
-│   └── model-serving/          # Model serving infrastructure
-├── models/                     # ML Models
-│   └── demo-llm/              # Demo LLM implementation
-├── infrastructure/             # Infrastructure as Code
-│   ├── kubernetes/            # K8s manifests
-│   ├── terraform/             # Cloud infrastructure
-│   └── docker/                # Container configurations
-├── docs/                      # Documentation
-├── scripts/                   # Automation scripts
-├── tests/                     # Test suites
-└── Makefile                  # Build automation
-```
-
-## 📖 Documentation
-
-- **[Demo Pipeline Guide](docs/demo-pipeline-guide.md)** - Complete walkthrough
-- **[Implementation Plan](docs/mlops-implementation-plan.md)** - Detailed implementation strategy
-- **[Architecture Guide](docs/mlops-modular-architecture.md)** - Technical architecture details
-- **[Testing Strategy](docs/mlops-testing-strategy.md)** - Comprehensive testing approach
-- **[Rollout Plan](docs/mlops-rollout-plan.md)** - Phased deployment strategy
-- **[Demo LLM Model](models/demo-llm/README.md)** - Model documentation
-
-## 🚀 Advanced Usage
-
-### Custom Model Integration
-```bash
-# Create new model from template
-cp -r models/demo-llm models/your-model
-# Modify model implementation in models/your-model/src/
-# Update configuration in models/your-model/config/
-```
-
-### Production Deployment
-```bash
-# Deploy to production
-make prod-deploy
-
-# Scale services
-kubectl scale deployment model-registry --replicas=5 -n mlops-platform
-
-# Set up autoscaling
-kubectl autoscale deployment demo-llm-production \
-    --cpu-percent=70 --min=3 --max=10 -n mlops-platform
-```
-
-### Monitoring and Alerts
-```bash
-# View metrics
-curl http://localhost:8080/metrics
-
-# Set up custom alerts in Grafana
-# Configure alert channels (Slack, email, PagerDuty)
-```
-
-## 🎯 Use Cases Demonstrated
-
-1. **Model Training** - Automated pipeline with quality gates
-2. **Model Registration** - Centralized model management
-3. **Model Deployment** - Staging and production deployment
-4. **Model Monitoring** - Real-time performance tracking
-5. **Model Versioning** - Complete lineage and rollback
-6. **A/B Testing** - Traffic splitting and comparison
-7. **Drift Detection** - Automated model degradation alerts
-8. **Compliance** - Audit trails and governance
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-**Pipeline fails:**
-```bash
-# Check pipeline logs
-argo logs <workflow-name>
-
-# Check pod resources
-kubectl describe pod <pod-name> -n mlops-platform
-```
-
-**Model serving issues:**
-```bash
-# Check service status
-kubectl get pods -n mlops-platform -l app=demo-llm
-
-# View logs
-kubectl logs -n mlops-platform -l app=demo-llm --tail=100
-```
-
-**Connection issues:**
-```bash
-# Verify services
-kubectl get svc -n mlops-platform
-
-# Test connectivity
-kubectl exec -it <pod-name> -n mlops-platform -- curl http://model-registry:8000/health
-```
-
-### Performance Tuning
-
-**Increase training speed:**
-```yaml
-# In models/demo-llm/config/training_config.yaml
-batch_size: 8  # Increase batch size
-max_epochs: 2  # Reduce epochs for demo
-```
-
-**Scale inference:**
-```bash
-# Increase replicas
-kubectl scale deployment demo-llm-staging --replicas=5 -n mlops-platform
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run tests (`make test`)
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- **Documentation**: Check the `/docs` directory
-- **Issues**: Create an issue in this repository
-- **Discussions**: Use GitHub Discussions for questions
-- **Demo**: Run `./scripts/run-demo-pipeline.sh --help`
-
-## 🎉 Getting Started Checklist
-
-- [ ] Clone the repository
-- [ ] Run `./scripts/setup-dev.sh`
-- [ ] Execute `./scripts/run-demo-pipeline.sh`
-- [ ] Access dashboards and test the model
-- [ ] Explore the documentation
-- [ ] Try customizing the demo model
-- [ ] Set up monitoring and alerts
-
-**Ready to revolutionize your ML operations? Start with our one-command demo! 🚀**
+For healthcare emergencies: **Call 911 or 988 immediately**
