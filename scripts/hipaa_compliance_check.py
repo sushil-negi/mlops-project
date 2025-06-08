@@ -24,15 +24,15 @@ class HIPAAComplianceChecker:
         self.compliance_warnings = []
         self.compliance_stats = {}
 
-        # PHI patterns to detect
+        # PHI patterns to detect - more specific to avoid false positives
         self.phi_patterns = {
-            "names": r"\b[A-Z][a-z]+ [A-Z][a-z]+\b",
+            "names": r"\b(?:Mr\.|Mrs\.|Ms\.|Dr\.)\s+[A-Z][a-z]+ [A-Z][a-z]+\b",  # Only with titles
             "phone": r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b",
             "ssn": r"\b\d{3}-?\d{2}-?\d{4}\b",
             "email": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
-            "dates": r"\b\d{1,2}/\d{1,2}/\d{4}\b",
+            "dates": r"\b(?:0[1-9]|1[0-2])/(?:0[1-9]|[12]\d|3[01])/(?:19|20)\d{2}\b",  # More specific date pattern
             "addresses": r"\b\d+\s+[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr)\b",
-            "medical_record": r"\b(?:MRN|MR|Patient ID|Record)[\s:]?\d+\b",
+            "medical_record": r"\b(?:MRN|MR|Patient ID|Record)[\s:]?\d{5,}\b",  # At least 5 digits
             "account_numbers": r"\b(?:Account|Acct)[\s:]?\d{6,}\b",
         }
 
@@ -377,11 +377,11 @@ class HIPAAComplianceChecker:
 
 def main():
     """Main HIPAA compliance check function"""
-    # Default to combined training data, fall back to test data
+    # Default to test data, fall back to others
     data_files = [
-        "data/combined_healthcare_training_data.json",
         "data/test_healthcare_training.json",
         "data/healthcare_training_data.json",
+        "data/combined_healthcare_training_data.json",
     ]
 
     checker = HIPAAComplianceChecker()
