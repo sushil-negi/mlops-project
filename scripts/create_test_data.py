@@ -35,17 +35,19 @@ for query, category in healthcare_samples:
             f"What should I do about {query.lower()}?",
             f"Looking for help with {query.lower()}",
         ]
-        
+
         test_query = random.choice(variations)
-        test_data.append({
-            "query": test_query,
-            "category": category,
-            "response": f"Professional healthcare guidance for {category}"
-        })
+        test_data.append(
+            {
+                "query": test_query,
+                "category": category,
+                "response": f"Professional healthcare guidance for {category}",
+            }
+        )
 
 # Save test data
 with open("data/test_healthcare_training.json", "w") as f:
     json.dump(test_data, f, indent=2)
 
 print(f"Created {len(test_data)} test samples")
-print("Categories:", set(item['category'] for item in test_data))
+print("Categories:", set(item["category"] for item in test_data))

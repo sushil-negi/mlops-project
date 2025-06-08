@@ -5,23 +5,27 @@ Port: 8091 (to avoid conflicts)
 """
 
 import json
-import sys
-import os
 import logging
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from datetime import datetime
+import os
+import sys
 import traceback
+from datetime import datetime
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # Add model path to system
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../models/healthcare-ai/src'))
+sys.path.insert(
+    0, os.path.join(os.path.dirname(__file__), "../models/healthcare-ai/src")
+)
 
 try:
     # Try to use the trained model engine first
     from healthcare_trained_engine import HealthcareTrainedEngine
+
     USE_TRAINED_MODEL = True
 except ImportError:
     try:
         from healthcare_ai_engine import HealthcareAIEngine
+
         USE_TRAINED_MODEL = False
     except ImportError:
         print("Error: Could not import Healthcare engines")
@@ -30,20 +34,21 @@ except ImportError:
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler('healthcare_ai_service.log'),
-        logging.StreamHandler(sys.stdout)
-    ]
+        logging.FileHandler("healthcare_ai_service.log"),
+        logging.StreamHandler(sys.stdout),
+    ],
 )
 logger = logging.getLogger(__name__)
 
+
 class HealthcareAIHandler(BaseHTTPRequestHandler):
     """HTTP handler for healthcare AI chatbot"""
-    
+
     def __init__(self, *args, **kwargs):
         # Initialize AI engine (shared across requests)
-        if not hasattr(self.__class__, 'ai_engine'):
+        if not hasattr(self.__class__, "ai_engine"):
             logger.info("Initializing Healthcare AI Engine...")
             if USE_TRAINED_MODEL:
                 logger.info("Using trained ML model engine")
@@ -52,32 +57,40 @@ class HealthcareAIHandler(BaseHTTPRequestHandler):
             else:
                 logger.info("Using knowledge base engine")
                 self.__class__.ai_engine = HealthcareAIEngine(use_llm=True)
-                stats = self.__class__.ai_engine.get_stats() if USE_TRAINED_MODEL else self.__class__.ai_engine.get_conversation_stats()
+                stats = (
+                    self.__class__.ai_engine.get_stats()
+                    if USE_TRAINED_MODEL
+                    else self.__class__.ai_engine.get_conversation_stats()
+                )
             logger.info(f"AI Engine initialized: {stats}")
         super().__init__(*args, **kwargs)
-    
+
     def do_GET(self):
         """Handle GET requests"""
-        if self.path == '/health':
+        if self.path == "/health":
             self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header("Content-type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            
-            stats = self.__class__.ai_engine.get_stats() if USE_TRAINED_MODEL else self.__class__.ai_engine.get_conversation_stats()
+
+            stats = (
+                self.__class__.ai_engine.get_stats()
+                if USE_TRAINED_MODEL
+                else self.__class__.ai_engine.get_conversation_stats()
+            )
             response = {
                 "status": "healthy",
                 "service": "Healthcare AI Assistant",
                 "version": "3.0.0",
                 "engine_stats": stats,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
             self.wfile.write(json.dumps(response, indent=2).encode())
-        
-        elif self.path == '/':
+
+        elif self.path == "/":
             self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header("Content-type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             response = {
                 "service": "Healthcare AI Assistant",
@@ -87,61 +100,67 @@ class HealthcareAIHandler(BaseHTTPRequestHandler):
                     "health": "/health",
                     "chat": "/chat (POST)",
                     "stats": "/stats",
-                    "chat_ui": "/chat.html"
-                }
+                    "chat_ui": "/chat.html",
+                },
             }
             self.wfile.write(json.dumps(response, indent=2).encode())
-        
-        elif self.path == '/stats':
+
+        elif self.path == "/stats":
             self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header("Content-type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            stats = self.__class__.ai_engine.get_stats() if USE_TRAINED_MODEL else self.__class__.ai_engine.get_conversation_stats()
+            stats = (
+                self.__class__.ai_engine.get_stats()
+                if USE_TRAINED_MODEL
+                else self.__class__.ai_engine.get_conversation_stats()
+            )
             self.wfile.write(json.dumps(stats, indent=2).encode())
-        
-        elif self.path == '/chat.html':
+
+        elif self.path == "/chat.html":
             self.serve_chat_interface()
-        
+
         else:
             self.send_response(404)
             self.end_headers()
-    
+
     def do_POST(self):
         """Handle POST requests"""
-        if self.path == '/chat':
+        if self.path == "/chat":
             try:
-                content_length = int(self.headers['Content-Length'])
+                content_length = int(self.headers["Content-Length"])
                 post_data = self.rfile.read(content_length)
-                data = json.loads(post_data.decode('utf-8'))
-                
-                user_message = data.get('message', '').strip()
+                data = json.loads(post_data.decode("utf-8"))
+
+                user_message = data.get("message", "").strip()
                 if not user_message:
                     self.send_error(400, "Message is required")
                     return
-                
+
                 # Generate response using AI engine
                 logger.info(f"Processing message: {user_message[:100]}...")
                 result = self.__class__.ai_engine.generate_response(user_message)
-                
+
                 # Format response
                 response_data = {
-                    "response": result['response'],
-                    "category": result['category'],
-                    "confidence": result['confidence'],
-                    "method": result['method'],
-                    "generation_time": result['generation_time'],
-                    "timestamp": datetime.now().isoformat()
+                    "response": result["response"],
+                    "category": result["category"],
+                    "confidence": result["confidence"],
+                    "method": result["method"],
+                    "generation_time": result["generation_time"],
+                    "timestamp": datetime.now().isoformat(),
                 }
-                
+
                 self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header("Content-type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 self.wfile.write(json.dumps(response_data).encode())
-                
-                logger.info(f"Response generated in {result['generation_time']:.2f}s using {result['method']}")
-                
+
+                logger.info(
+                    f"Response generated in {result['generation_time']:.2f}s using {result['method']}"
+                )
+
             except Exception as e:
                 logger.error(f"Error processing chat request: {e}")
                 logger.error(traceback.format_exc())
@@ -149,18 +168,18 @@ class HealthcareAIHandler(BaseHTTPRequestHandler):
         else:
             self.send_response(404)
             self.end_headers()
-    
+
     def do_OPTIONS(self):
         """Handle CORS preflight"""
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
-    
+
     def serve_chat_interface(self):
         """Serve the chat interface"""
-        html = '''<!DOCTYPE html>
+        html = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -450,32 +469,34 @@ class HealthcareAIHandler(BaseHTTPRequestHandler):
         document.getElementById('userInput').focus();
     </script>
 </body>
-</html>'''
-        
+</html>"""
+
         self.send_response(200)
-        self.send_header('Content-type', 'text/html')
+        self.send_header("Content-type", "text/html")
         self.end_headers()
         self.wfile.write(html.encode())
 
+
 def start_healthcare_ai_service(port=8091):
     """Start the healthcare AI service"""
-    server_address = ('', port)
-    
+    server_address = ("", port)
+
     logger.info(f"Starting Healthcare AI Service on port {port}")
     logger.info("Initializing AI engine with LLM and knowledge base...")
-    
+
     try:
         httpd = HTTPServer(server_address, HealthcareAIHandler)
         logger.info(f"Healthcare AI Service ready at http://localhost:{port}")
         logger.info(f"Chat interface: http://localhost:{port}/chat.html")
         logger.info("Press Ctrl+C to stop")
-        
+
         httpd.serve_forever()
     except KeyboardInterrupt:
         logger.info("\nShutting down Healthcare AI Service...")
     except Exception as e:
         logger.error(f"Error starting server: {e}")
         raise
+
 
 if __name__ == "__main__":
     # Note: For full LLM support, install: pip install transformers torch
