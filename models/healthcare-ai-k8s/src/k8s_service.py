@@ -18,11 +18,15 @@ from pydantic import BaseModel
 import redis
 from fastapi.responses import Response
 
-# Import healthcare AI engine from main model directory
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent.parent / "healthcare-ai" / "src"))
-from healthcare_ai_engine import HealthcareAIEngine
+# Import healthcare AI engine
+from src.healthcare_ai_engine import HealthcareAIEngine
+from src.observability import (
+    init_observability, 
+    get_logger, 
+    get_tracer,
+    trace_healthcare_function,
+    healthcare_span
+)
 
 # Prometheus metrics - create new registry to avoid conflicts
 from prometheus_client import CollectorRegistry, Counter, Histogram, Gauge, generate_latest
@@ -84,12 +88,17 @@ class HealthResponse(BaseModel):
 healthcare_engine = None
 redis_client = None
 start_time = time.time()
+observability_logger = None
+tracer = None
 
 def initialize_services():
     """Initialize healthcare AI engine and Redis connection"""
-    global healthcare_engine, redis_client
+    global healthcare_engine, redis_client, observability_logger, tracer
     
     try:
+        # Initialize observability first
+        observability_logger, tracer = init_observability(app)
+        
         # Initialize healthcare AI engine
         logger.info("Initializing Healthcare AI Engine...")
         healthcare_engine = HealthcareAIEngine()
@@ -177,6 +186,7 @@ async def metrics():
     return Response(generate_latest(custom_registry), media_type="text/plain")
 
 @app.post("/chat", response_model=ChatResponse)
+@trace_healthcare_function("chat_request")
 async def chat_endpoint(request: ChatRequest):
     """Main chat endpoint with monitoring"""
     if healthcare_engine is None:
@@ -184,60 +194,107 @@ async def chat_endpoint(request: ChatRequest):
     
     start_time = time.time()
     
-    try:
-        # Check cache first (if Redis available)
-        cache_key = None
-        if redis_client:
-            cache_key = f"chat:{hash(request.message.lower())}"
-            try:
-                cached_response = redis_client.get(cache_key)
-                if cached_response:
-                    logger.info("Returning cached response")
-                    return ChatResponse.parse_raw(cached_response)
-            except Exception as e:
-                logger.warning(f"Cache read error: {e}")
+    with healthcare_span("chat_processing", 
+                        message_length=len(request.message),
+                        user_id=request.user_id,
+                        session_id=request.session_id) as span:
         
-        # Generate response
-        response_data = healthcare_engine.generate_response(request.message)
-        
-        generation_time = time.time() - start_time
-        
-        # Create response object
-        chat_response = ChatResponse(
-            response=response_data['response'],
-            category=response_data.get('category', 'general'),
-            confidence=response_data.get('confidence', 0.0),
-            method=response_data.get('method', 'unknown'),
-            generation_time=generation_time,
-            model_version="2.0.0",
-            timestamp=datetime.now().isoformat()
-        )
-        
-        # Update metrics
-        model_predictions.labels(
-            category=chat_response.category,
-            method=chat_response.method
-        ).inc()
-        
-        # Cache response (if Redis available)
-        if redis_client and cache_key:
-            try:
-                redis_client.setex(
-                    cache_key, 
-                    3600,  # 1 hour cache
-                    chat_response.json()
+        try:
+            # Check cache first (if Redis available)
+            cache_key = None
+            cached = False
+            if redis_client:
+                cache_key = f"chat:{hash(request.message.lower())}"
+                try:
+                    cached_response = redis_client.get(cache_key)
+                    if cached_response:
+                        cached = True
+                        span.set_attribute("cache_hit", True)
+                        logger.info("Returning cached response")
+                        return ChatResponse.parse_raw(cached_response)
+                except Exception as e:
+                    logger.warning(f"Cache read error: {e}")
+            
+            span.set_attribute("cache_hit", False)
+            
+            # Generate response
+            with healthcare_span("model_inference") as inference_span:
+                response_data = healthcare_engine.generate_response(request.message)
+            
+            generation_time = time.time() - start_time
+            
+            # Create response object
+            chat_response = ChatResponse(
+                response=response_data['response'],
+                category=response_data.get('category', 'general'),
+                confidence=response_data.get('confidence', 0.0),
+                method=response_data.get('method', 'unknown'),
+                generation_time=generation_time,
+                model_version="2.0.0",
+                timestamp=datetime.now().isoformat()
+            )
+            
+            # Add span attributes
+            span.set_attribute("response_category", chat_response.category)
+            span.set_attribute("response_confidence", chat_response.confidence)
+            span.set_attribute("response_time", generation_time)
+            
+            # Update metrics
+            model_predictions.labels(
+                category=chat_response.category,
+                method=chat_response.method
+            ).inc()
+            
+            # Cache response (if Redis available)
+            if redis_client and cache_key:
+                try:
+                    redis_client.setex(
+                        cache_key, 
+                        3600,  # 1 hour cache
+                        chat_response.json()
+                    )
+                except Exception as e:
+                    logger.warning(f"Cache write error: {e}")
+            
+            # Log request with observability logger
+            if observability_logger:
+                observability_logger.log_request(
+                    category=chat_response.category,
+                    confidence=chat_response.confidence,
+                    response_time=generation_time,
+                    method=chat_response.method,
+                    user_id=request.user_id,
+                    session_id=request.session_id,
+                    cached=cached
                 )
-            except Exception as e:
-                logger.warning(f"Cache write error: {e}")
-        
-        # Log request for monitoring
-        logger.info(f"Chat request processed: {chat_response.category} in {generation_time:.3f}s")
-        
-        return chat_response
-        
-    except Exception as e:
-        logger.error(f"Chat processing error: {e}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+                
+                # Check for performance issues
+                observability_logger.log_performance_issue(
+                    response_time=generation_time,
+                    category=chat_response.category
+                )
+            
+            # Log request for monitoring
+            logger.info(f"Chat request processed: {chat_response.category} in {generation_time:.3f}s")
+            
+            return chat_response
+            
+        except Exception as e:
+            span.set_attribute("error", True)
+            span.set_attribute("error_type", type(e).__name__)
+            
+            if observability_logger:
+                observability_logger.log_error(
+                    error=e,
+                    context={
+                        "user_id": request.user_id,
+                        "session_id": request.session_id,
+                        "message_length": len(request.message)
+                    }
+                )
+            
+            logger.error(f"Chat processing error: {e}")
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.get("/stats")
 async def get_stats():

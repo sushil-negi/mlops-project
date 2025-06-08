@@ -1,0 +1,403 @@
+name: Security & Compliance Scan
+
+on:
+  schedule:
+    # Run daily at 3 AM UTC
+    - cron: '0 3 * * *'
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.9'
+
+jobs:
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install safety and pip-audit
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety pip-audit
+
+    - name: Safety check - Healthcare AI
+      run: |
+        if [ -f models/healthcare-ai-k8s/requirements.txt ]; then
+          safety check -r models/healthcare-ai-k8s/requirements.txt --json --output safety-healthcare-ai.json
+        fi
+
+    - name: Safety check - Model Registry
+      run: |
+        if [ -f services/model-registry/requirements.txt ]; then
+          safety check -r services/model-registry/requirements.txt --json --output safety-model-registry.json
+        fi
+
+    - name: Pip-audit scan
+      run: |
+        if [ -f models/healthcare-ai-k8s/requirements.txt ]; then
+          pip-audit -r models/healthcare-ai-k8s/requirements.txt --format=json --output=pip-audit-report.json
+        fi
+
+    - name: Upload vulnerability reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: vulnerability-reports
+        path: |
+          safety-*.json
+          pip-audit-report.json
+
+  secrets-scan:
+    name: Secrets Detection
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: TruffleHog OSS
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        extra_args: --debug --only-verified
+
+  code-security-scan:
+    name: Code Security Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install bandit and semgrep
+      run: |
+        pip install bandit[toml] semgrep
+
+    - name: Bandit security scan
+      run: |
+        bandit -r models/ scripts/ services/ -f json -o bandit-security-report.json
+        bandit -r models/ scripts/ services/ -ll
+
+    - name: Semgrep security scan
+      run: |
+        semgrep --config=auto --json --output=semgrep-report.json models/ scripts/ services/
+
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-scan-results
+        path: |
+          bandit-security-report.json
+          semgrep-report.json
+
+  docker-security-scan:
+    name: Docker Image Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build healthcare AI image
+      run: |
+        docker build -t healthcare-ai:latest models/healthcare-ai-k8s/
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'healthcare-ai:latest'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Run Grype vulnerability scanner
+      uses: anchore/scan-action@v3
+      with:
+        image: 'healthcare-ai:latest'
+        fail-build: false
+        output-format: json
+        output-file: grype-results.json
+
+    - name: Upload Grype results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: grype-scan-results
+        path: grype-results.json
+
+  healthcare-compliance-check:
+    name: Healthcare Compliance Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Healthcare compliance validation
+      run: |
+        python -c "
+        import os
+        import json
+        import re
+        
+        # Healthcare compliance checks
+        compliance_issues = []
+        
+        # Check for PHI handling patterns
+        phi_patterns = [
+            r'ssn|social.security',
+            r'medical.record.number|mrn',
+            r'patient.id|patient.identifier',
+            r'date.of.birth|dob',
+            r'health.insurance|insurance.number'
+        ]
+        
+        def scan_file(filepath):
+            try:
+                with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read().lower()
+                    for pattern in phi_patterns:
+                        if re.search(pattern, content):
+                            return f'Potential PHI reference found in {filepath}: {pattern}'
+            except:
+                pass
+            return None
+        
+        # Scan source files
+        for root, dirs, files in os.walk('.'):
+            # Skip certain directories
+            if any(skip in root for skip in ['.git', '__pycache__', 'venv', 'node_modules']):
+                continue
+                
+            for file in files:
+                if file.endswith(('.py', '.js', '.ts', '.java', '.cpp', '.c')):
+                    filepath = os.path.join(root, file)
+                    issue = scan_file(filepath)
+                    if issue:
+                        compliance_issues.append(issue)
+        
+        # Check for encryption requirements
+        crypto_patterns = ['password', 'secret', 'key', 'token']
+        encryption_found = False
+        
+        for root, dirs, files in os.walk('./models'):
+            for file in files:
+                if file.endswith('.py'):
+                    filepath = os.path.join(root, file)
+                    try:
+                        with open(filepath, 'r') as f:
+                            content = f.read().lower()
+                            if any(pattern in content for pattern in crypto_patterns):
+                                if 'encrypt' not in content and 'hash' not in content and 'bcrypt' not in content:
+                                    compliance_issues.append(f'Potential unencrypted sensitive data in {filepath}')
+                    except:
+                        pass
+        
+        # Check for audit logging
+        audit_logging_found = False
+        for root, dirs, files in os.walk('./models'):
+            for file in files:
+                if file.endswith('.py'):
+                    filepath = os.path.join(root, file)
+                    try:
+                        with open(filepath, 'r') as f:
+                            content = f.read()
+                            if 'logging' in content and ('audit' in content or 'log' in content):
+                                audit_logging_found = True
+                                break
+                    except:
+                        pass
+        
+        if not audit_logging_found:
+            compliance_issues.append('No audit logging implementation found')
+        
+        # Generate compliance report
+        compliance_report = {
+            'scan_timestamp': '$(date -u +%Y-%m-%dT%H:%M:%SZ)',
+            'total_issues': len(compliance_issues),
+            'issues': compliance_issues,
+            'compliance_status': 'PASSED' if len(compliance_issues) == 0 else 'ISSUES_FOUND',
+            'recommendations': [
+                'Implement data encryption for sensitive information',
+                'Add comprehensive audit logging',
+                'Ensure PHI data is properly anonymized',
+                'Implement access controls and authentication',
+                'Add data retention and deletion policies'
+            ]
+        }
+        
+        print(f'Healthcare Compliance Scan Results:')
+        print(f'Total Issues: {len(compliance_issues)}')
+        print(f'Status: {compliance_report[\"compliance_status\"]}')
+        
+        if compliance_issues:
+            print('Issues found:')
+            for issue in compliance_issues:
+                print(f'  - {issue}')
+        
+        with open('healthcare_compliance_report.json', 'w') as f:
+            json.dump(compliance_report, f, indent=2)
+        "
+
+    - name: Upload compliance report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: compliance-report
+        path: healthcare_compliance_report.json
+
+  license-compliance:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install pip-licenses
+      run: |
+        pip install pip-licenses
+
+    - name: Check healthcare AI licenses
+      run: |
+        if [ -f models/healthcare-ai-k8s/requirements.txt ]; then
+          pip install -r models/healthcare-ai-k8s/requirements.txt
+          pip-licenses --format=json --output-file=healthcare-ai-licenses.json
+          pip-licenses --summary
+        fi
+
+    - name: Check for GPL licenses
+      run: |
+        python -c "
+        import json
+        import sys
+        
+        try:
+            with open('healthcare-ai-licenses.json', 'r') as f:
+                licenses = json.load(f)
+            
+            gpl_licenses = []
+            for pkg in licenses:
+                license_name = pkg.get('License', '').lower()
+                if 'gpl' in license_name and 'lgpl' not in license_name:
+                    gpl_licenses.append(f'{pkg[\"Name\"]} ({pkg[\"License\"]})')
+            
+            if gpl_licenses:
+                print('WARNING: GPL licenses found (may not be compatible with commercial use):')
+                for lic in gpl_licenses:
+                    print(f'  - {lic}')
+                # Don't fail build, just warn
+            else:
+                print('No problematic GPL licenses found')
+                
+        except FileNotFoundError:
+            print('License file not found')
+        except Exception as e:
+            print(f'Error checking licenses: {e}')
+        "
+
+    - name: Upload license report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: license-report
+        path: healthcare-ai-licenses.json
+
+  security-summary:
+    name: Security Summary Report
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, secrets-scan, code-security-scan, docker-security-scan, healthcare-compliance-check, license-compliance]
+    if: always()
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: security-reports
+
+    - name: Generate security summary
+      run: |
+        echo "# Healthcare AI Security Scan Summary" > security-summary.md
+        echo "Generated: $(date -u)" >> security-summary.md
+        echo "" >> security-summary.md
+        
+        echo "## Scan Results" >> security-summary.md
+        echo "- Dependency Scan: ${{ needs.dependency-scan.result }}" >> security-summary.md
+        echo "- Secrets Detection: ${{ needs.secrets-scan.result }}" >> security-summary.md
+        echo "- Code Security: ${{ needs.code-security-scan.result }}" >> security-summary.md
+        echo "- Docker Security: ${{ needs.docker-security-scan.result }}" >> security-summary.md
+        echo "- Healthcare Compliance: ${{ needs.healthcare-compliance-check.result }}" >> security-summary.md
+        echo "- License Compliance: ${{ needs.license-compliance.result }}" >> security-summary.md
+        echo "" >> security-summary.md
+        
+        # Check for compliance report
+        if [ -f "security-reports/compliance-report/healthcare_compliance_report.json" ]; then
+          echo "## Healthcare Compliance Status" >> security-summary.md
+          python -c "
+          import json
+          with open('security-reports/compliance-report/healthcare_compliance_report.json', 'r') as f:
+              report = json.load(f)
+          print(f'Status: {report[\"compliance_status\"]}')
+          print(f'Issues Found: {report[\"total_issues\"]}')
+          if report['issues']:
+              print('Issues:')
+              for issue in report['issues']:
+                  print(f'- {issue}')
+          " >> security-summary.md
+        fi
+        
+        echo "" >> security-summary.md
+        echo "## Next Steps" >> security-summary.md
+        echo "1. Review and address any security vulnerabilities" >> security-summary.md
+        echo "2. Ensure healthcare compliance requirements are met" >> security-summary.md
+        echo "3. Update dependencies with security patches" >> security-summary.md
+        echo "4. Implement additional security controls as needed" >> security-summary.md
+
+    - name: Upload security summary
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-summary
+        path: security-summary.md
+
+    - name: Notify security team
+      uses: 8398a7/action-slack@v3
+      if: failure()
+      with:
+        status: 'danger'
+        text: 'Healthcare AI Security Scan found critical issues - immediate attention required'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

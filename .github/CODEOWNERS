@@ -1,0 +1,36 @@
+# Healthcare AI Code Owners
+# These users/teams will be requested for review when someone opens a pull request.
+
+# Global owners
+* @sushil-negi
+
+# Healthcare AI Model and Engine
+/models/ @sushil-negi
+/scripts/train*.py @sushil-negi
+/scripts/*model*.py @sushil-negi
+
+# Infrastructure and Deployment
+/gitops/ @sushil-negi
+/infrastructure/ @sushil-negi
+/k8s/ @sushil-negi
+/.github/workflows/ @sushil-negi
+
+# Data and Training
+/data/ @sushil-negi
+/pipelines/ @sushil-negi
+
+# Security and Compliance
+/.github/workflows/security-scan.yml @sushil-negi
+/docs/*security* @sushil-negi
+/docs/*compliance* @sushil-negi
+
+# Documentation
+/docs/ @sushil-negi
+*.md @sushil-negi
+
+# Configuration files
+*.yml @sushil-negi
+*.yaml @sushil-negi
+docker-compose*.yml @sushil-negi
+Dockerfile @sushil-negi
+requirements.txt @sushil-negi

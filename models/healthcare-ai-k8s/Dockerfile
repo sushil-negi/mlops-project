@@ -3,9 +3,10 @@ FROM python:3.9-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies with fixed packages
-RUN apt-get clean && apt-get update --fix-missing && apt-get install -y --fix-missing \
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
     curl \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching

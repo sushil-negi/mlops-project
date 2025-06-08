@@ -1,0 +1,133 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: healthcare-ai-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+      - ./infrastructure/docker/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - healthcare-ai-logging
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: healthcare-ai-logstash
+    volumes:
+      - ./infrastructure/docker/logstash/pipeline:/usr/share/logstash/pipeline:ro
+    ports:
+      - "5044:5044"
+      - "5000:5000"
+      - "5001:5001"
+      - "5002:5002"
+    environment:
+      - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+    networks:
+      - healthcare-ai-logging
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9600 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: healthcare-ai-kibana
+    ports:
+      - "5601:5601"
+    volumes:
+      - ./infrastructure/docker/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    networks:
+      - healthcare-ai-logging
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: healthcare-ai-filebeat
+    user: root
+    volumes:
+      - ./infrastructure/docker/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./logs:/logs:ro
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+    networks:
+      - healthcare-ai-logging
+    depends_on:
+      logstash:
+        condition: service_healthy
+    command: ["--strict.perms=false"]
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.50
+    container_name: healthcare-ai-jaeger
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # HTTP collector
+      - "14269:14269"  # Health check
+      - "6831:6831/udp"  # Agent Jaeger thrift
+      - "6832:6832/udp"  # Agent Jaeger binary
+      - "5778:5778"   # Agent configs
+    networks:
+      - healthcare-ai-logging
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:14269/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Alertmanager for alert routing
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: healthcare-ai-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./infrastructure/docker/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    networks:
+      - healthcare-ai-logging
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+
+networks:
+  healthcare-ai-logging:
+    driver: bridge
+
+volumes:
+  elasticsearch_data:
+    driver: local

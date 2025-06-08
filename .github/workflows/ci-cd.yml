@@ -1,0 +1,394 @@
+name: Healthcare AI CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_NAME: healthcare-ai
+  PYTHON_VERSION: '3.9'
+
+jobs:
+  code-quality:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort bandit safety mypy pytest pytest-cov
+        if [ -f models/healthcare-ai-k8s/requirements.txt ]; then
+          pip install -r models/healthcare-ai-k8s/requirements.txt
+        fi
+
+    - name: Code formatting check (Black)
+      run: |
+        black --check --diff models/ scripts/ tests/ || exit 1
+
+    - name: Import sorting check (isort)
+      run: |
+        isort --check-only --diff models/ scripts/ tests/ || exit 1
+
+    - name: Linting (flake8)
+      run: |
+        flake8 models/ scripts/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 models/ scripts/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Type checking (mypy)
+      run: |
+        mypy models/healthcare-ai-k8s/src/ --ignore-missing-imports || true
+
+    - name: Security scan (bandit)
+      run: |
+        bandit -r models/ scripts/ -f json -o bandit-report.json || true
+        bandit -r models/ scripts/ --severity-level medium
+
+    - name: Dependency vulnerability scan (safety)
+      run: |
+        safety check --json --output safety-report.json || true
+        safety check
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: code-quality
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10']
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-${{ matrix.python-version }}-pip-${{ hashFiles('**/requirements.txt') }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov pytest-mock
+        if [ -f models/healthcare-ai-k8s/requirements.txt ]; then
+          pip install -r models/healthcare-ai-k8s/requirements.txt
+        fi
+
+    - name: Run unit tests
+      run: |
+        cd tests
+        python -m pytest unit/ -v --cov=../models --cov-report=xml --cov-report=html
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./tests/coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  model-validation:
+    name: Model Validation & Testing
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r models/healthcare-ai-k8s/requirements.txt
+        pip install scikit-learn pandas numpy joblib
+
+    - name: Download test data
+      run: |
+        mkdir -p test_data
+        if [ -f data/test_healthcare_training.json ]; then
+          cp data/test_healthcare_training.json test_data/
+        fi
+
+    - name: Validate model performance
+      run: |
+        cd tests
+        python -m pytest integration/test_ml_classification_accuracy.py -v
+        python -m pytest e2e/test_response_quality_validation.py -v
+
+    - name: Healthcare-specific validation
+      run: |
+        python scripts/model_interaction_guide.py --validate-crisis-detection
+        python scripts/test_mlops_pipeline.py --health-check
+
+    - name: Model bias detection
+      run: |
+        python -c "
+        import json
+        import sys
+        
+        # Simple bias detection for healthcare categories
+        with open('data/test_healthcare_training.json', 'r') as f:
+            data = json.load(f)
+        
+        categories = {}
+        for item in data:
+            cat = item.get('category', 'unknown')
+            categories[cat] = categories.get(cat, 0) + 1
+        
+        print('Category distribution:')
+        for cat, count in categories.items():
+            print(f'  {cat}: {count}')
+        
+        # Check for severe imbalance
+        if len(categories) > 1:
+            max_count = max(categories.values())
+            min_count = min(categories.values())
+            ratio = max_count / min_count if min_count > 0 else float('inf')
+            
+            if ratio > 10:
+                print(f'WARNING: High class imbalance detected (ratio: {ratio:.2f})')
+                sys.exit(1)
+            else:
+                print(f'Class balance acceptable (ratio: {ratio:.2f})')
+        "
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: model-validation
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r models/healthcare-ai-k8s/requirements.txt
+        pip install pytest-asyncio httpx
+
+    - name: Start healthcare AI service
+      run: |
+        cd models/healthcare-ai-k8s
+        python src/k8s_service.py &
+        sleep 10
+
+    - name: Run integration tests
+      run: |
+        cd tests
+        python -m pytest integration/ -v --disable-warnings
+
+    - name: API health check
+      run: |
+        curl -f http://localhost:8080/health || exit 1
+        curl -f http://localhost:8080/ready || exit 1
+
+  build-and-scan:
+    name: Build & Security Scan
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ env.DOCKER_REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: models/healthcare-ai-k8s
+        file: models/healthcare-ai-k8s/Dockerfile
+        push: false
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}:latest
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-and-scan
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+        kubectl config current-context
+
+    - name: Deploy to staging
+      run: |
+        kubectl apply -f gitops/manifests/healthcare-ai-staging/
+        kubectl rollout status deployment/healthcare-ai-v2-deployment -n healthcare-ai-staging --timeout=300s
+
+    - name: Verify staging deployment
+      run: |
+        kubectl get pods -n healthcare-ai-staging
+        kubectl port-forward -n healthcare-ai-staging service/healthcare-ai-v2-service 8081:80 &
+        sleep 10
+        curl -f http://localhost:8081/health || exit 1
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-and-scan
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+        kubectl config current-context
+
+    - name: Deploy to production
+      run: |
+        kubectl apply -f gitops/manifests/healthcare-ai-production/
+        kubectl rollout status deployment/healthcare-ai-v2-deployment -n healthcare-ai-production --timeout=300s
+
+    - name: Verify production deployment
+      run: |
+        kubectl get pods -n healthcare-ai-production
+        kubectl port-forward -n healthcare-ai-production service/healthcare-ai-v2-service 8082:80 &
+        sleep 10
+        curl -f http://localhost:8082/health || exit 1
+
+    - name: Notify deployment
+      uses: 8398a7/action-slack@v3
+      if: always()
+      with:
+        status: ${{ job.status }}
+        text: Healthcare AI deployment to production ${{ job.status }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  rollback:
+    name: Automatic Rollback
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: failure() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+
+    - name: Rollback deployment
+      run: |
+        NAMESPACE=${{ github.ref == 'refs/heads/main' && 'healthcare-ai-production' || 'healthcare-ai-staging' }}
+        kubectl rollout undo deployment/healthcare-ai-v2-deployment -n $NAMESPACE
+        kubectl rollout status deployment/healthcare-ai-v2-deployment -n $NAMESPACE --timeout=300s
+
+    - name: Notify rollback
+      uses: 8398a7/action-slack@v3
+      with:
+        status: 'warning'
+        text: 'Healthcare AI deployment failed - automatic rollback completed'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

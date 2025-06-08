@@ -1,0 +1,431 @@
+name: Healthcare AI Model Training Pipeline
+
+on:
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      training_data_path:
+        description: 'Path to training data'
+        required: false
+        default: 'data/combined_healthcare_training_data.json'
+      model_version:
+        description: 'Model version tag'
+        required: false
+        default: 'auto'
+      force_retrain:
+        description: 'Force retraining even if performance is good'
+        required: false
+        default: 'false'
+
+env:
+  MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+  MLFLOW_EXPERIMENT_NAME: healthcare-ai-training
+  PYTHON_VERSION: '3.9'
+
+jobs:
+  data-validation:
+    name: Data Quality Validation
+    runs-on: ubuntu-latest
+    outputs:
+      data-quality-score: ${{ steps.validate.outputs.quality-score }}
+      should-train: ${{ steps.validate.outputs.should-train }}
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas numpy scikit-learn mlflow boto3 great-expectations
+
+    - name: Data quality validation
+      id: validate
+      run: |
+        python -c "
+        import json
+        import pandas as pd
+        import numpy as np
+        from datetime import datetime
+        import sys
+        
+        # Load and validate training data
+        data_path = '${{ github.event.inputs.training_data_path || 'data/combined_healthcare_training_data.json' }}'
+        try:
+            with open(data_path, 'r') as f:
+                data = json.load(f)
+            df = pd.DataFrame(data)
+        except Exception as e:
+            print(f'Error loading data: {e}')
+            sys.exit(1)
+        
+        # Quality checks
+        quality_score = 100
+        issues = []
+        
+        # Check data size
+        if len(df) < 100:
+            quality_score -= 30
+            issues.append(f'Insufficient data: {len(df)} samples (minimum 100)')
+        
+        # Check required columns
+        required_cols = ['text', 'category']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            quality_score -= 40
+            issues.append(f'Missing columns: {missing_cols}')
+        
+        # Check for nulls
+        null_pct = df.isnull().sum().sum() / (len(df) * len(df.columns)) * 100
+        if null_pct > 5:
+            quality_score -= 20
+            issues.append(f'High null percentage: {null_pct:.1f}%')
+        
+        # Check category distribution
+        if 'category' in df.columns:
+            cat_counts = df['category'].value_counts()
+            min_samples = cat_counts.min()
+            max_samples = cat_counts.max()
+            if min_samples > 0:
+                imbalance_ratio = max_samples / min_samples
+                if imbalance_ratio > 10:
+                    quality_score -= 15
+                    issues.append(f'High class imbalance: {imbalance_ratio:.1f}')
+        
+        # Check text quality
+        if 'text' in df.columns:
+            avg_length = df['text'].str.len().mean()
+            if avg_length < 10:
+                quality_score -= 15
+                issues.append(f'Very short texts: avg {avg_length:.1f} chars')
+        
+        print(f'Data quality score: {quality_score}/100')
+        if issues:
+            print('Issues found:')
+            for issue in issues:
+                print(f'  - {issue}')
+        
+        # Determine if training should proceed
+        should_train = quality_score >= 60 or '${{ github.event.inputs.force_retrain }}' == 'true'
+        
+        print(f'::set-output name=quality-score::{quality_score}')
+        print(f'::set-output name=should-train::{str(should_train).lower()}')
+        
+        # Save validation report
+        report = {
+            'timestamp': datetime.now().isoformat(),
+            'data_path': data_path,
+            'sample_count': len(df),
+            'quality_score': quality_score,
+            'issues': issues,
+            'should_train': should_train
+        }
+        
+        with open('data_validation_report.json', 'w') as f:
+            json.dump(report, f, indent=2)
+        "
+
+    - name: Upload validation report
+      uses: actions/upload-artifact@v3
+      with:
+        name: data-validation-report
+        path: data_validation_report.json
+
+  model-training:
+    name: Train Healthcare AI Model
+    runs-on: ubuntu-latest
+    needs: data-validation
+    if: needs.data-validation.outputs.should-train == 'true'
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r models/healthcare-ai-k8s/requirements.txt
+        pip install mlflow boto3 wandb
+
+    - name: Set up MLflow
+      run: |
+        export MLFLOW_TRACKING_URI="${{ env.MLFLOW_TRACKING_URI }}"
+        mlflow experiments create --experiment-name ${{ env.MLFLOW_EXPERIMENT_NAME }} || true
+
+    - name: Train model
+      id: train
+      run: |
+        cd scripts
+        python train_with_mlflow_logging.py \
+          --data-path "../${{ github.event.inputs.training_data_path || 'data/combined_healthcare_training_data.json' }}" \
+          --experiment-name "${{ env.MLFLOW_EXPERIMENT_NAME }}" \
+          --model-version "${{ github.event.inputs.model_version || 'auto' }}" \
+          --output-metrics training_metrics.json
+
+    - name: Healthcare-specific validation
+      run: |
+        python -c "
+        import json
+        import sys
+        
+        # Load training metrics
+        with open('scripts/training_metrics.json', 'r') as f:
+            metrics = json.load(f)
+        
+        # Healthcare AI validation thresholds
+        min_accuracy = 0.90
+        min_crisis_detection = 0.99
+        max_response_time = 0.5  # seconds
+        
+        accuracy = metrics.get('accuracy', 0)
+        crisis_recall = metrics.get('crisis_detection_recall', 0)
+        avg_response_time = metrics.get('avg_response_time', 1.0)
+        
+        print(f'Model validation results:')
+        print(f'  Accuracy: {accuracy:.3f} (min: {min_accuracy})')
+        print(f'  Crisis detection recall: {crisis_recall:.3f} (min: {min_crisis_detection})')
+        print(f'  Avg response time: {avg_response_time:.3f}s (max: {max_response_time}s)')
+        
+        validation_passed = (
+            accuracy >= min_accuracy and
+            crisis_recall >= min_crisis_detection and
+            avg_response_time <= max_response_time
+        )
+        
+        if not validation_passed:
+            print('Model validation FAILED - healthcare requirements not met')
+            sys.exit(1)
+        else:
+            print('Model validation PASSED - ready for deployment')
+        
+        # Save validation results
+        validation_results = {
+            'validation_passed': validation_passed,
+            'accuracy': accuracy,
+            'crisis_detection_recall': crisis_recall,
+            'avg_response_time': avg_response_time,
+            'meets_healthcare_standards': validation_passed
+        }
+        
+        with open('model_validation_results.json', 'w') as f:
+            json.dump(validation_results, f, indent=2)
+        "
+
+    - name: Upload training artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: training-artifacts
+        path: |
+          scripts/training_metrics.json
+          model_validation_results.json
+
+  model-registration:
+    name: Register Model
+    runs-on: ubuntu-latest
+    needs: model-training
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Download training artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: training-artifacts
+
+    - name: Install dependencies
+      run: |
+        pip install mlflow boto3
+
+    - name: Register model in MLflow
+      run: |
+        python -c "
+        import mlflow
+        import json
+        from datetime import datetime
+        
+        mlflow.set_tracking_uri('${{ env.MLFLOW_TRACKING_URI }}')
+        
+        # Load validation results
+        with open('model_validation_results.json', 'r') as f:
+            results = json.load(f)
+        
+        if results['validation_passed']:
+            # Get latest run from experiment
+            experiment = mlflow.get_experiment_by_name('${{ env.MLFLOW_EXPERIMENT_NAME }}')
+            runs = mlflow.search_runs(experiment_ids=[experiment.experiment_id], order_by=['start_time DESC'], max_results=1)
+            
+            if not runs.empty:
+                run_id = runs.iloc[0]['run_id']
+                
+                # Register model
+                model_version = mlflow.register_model(
+                    model_uri=f'runs:/{run_id}/model',
+                    name='healthcare-ai-model',
+                    tags={
+                        'validation_passed': 'true',
+                        'accuracy': str(results['accuracy']),
+                        'crisis_detection_recall': str(results['crisis_detection_recall']),
+                        'deployment_ready': 'true',
+                        'created_by': 'github-actions',
+                        'created_at': datetime.now().isoformat()
+                    }
+                )
+                
+                print(f'Model registered: {model_version.name} version {model_version.version}')
+                
+                # Transition to staging if validation passed
+                client = mlflow.tracking.MlflowClient()
+                client.transition_model_version_stage(
+                    name='healthcare-ai-model',
+                    version=model_version.version,
+                    stage='Staging'
+                )
+                
+                print(f'Model transitioned to Staging stage')
+            else:
+                print('No training runs found')
+        else:
+            print('Model validation failed - not registering')
+        "
+
+  performance-comparison:
+    name: Compare with Production Model
+    runs-on: ubuntu-latest
+    needs: model-registration
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        pip install mlflow boto3 pandas numpy scikit-learn
+
+    - name: Compare model performance
+      run: |
+        python -c "
+        import mlflow
+        import json
+        import pandas as pd
+        
+        mlflow.set_tracking_uri('${{ env.MLFLOW_TRACKING_URI }}')
+        
+        try:
+            client = mlflow.tracking.MlflowClient()
+            
+            # Get staging and production models
+            staging_models = client.get_latest_versions('healthcare-ai-model', stages=['Staging'])
+            production_models = client.get_latest_versions('healthcare-ai-model', stages=['Production'])
+            
+            if staging_models and production_models:
+                staging_model = staging_models[0]
+                production_model = production_models[0]
+                
+                # Get metrics for comparison
+                staging_run = mlflow.get_run(staging_model.run_id)
+                production_run = mlflow.get_run(production_model.run_id)
+                
+                staging_metrics = staging_run.data.metrics
+                production_metrics = production_run.data.metrics
+                
+                print('Model Performance Comparison:')
+                print(f'Staging Model (v{staging_model.version}):')
+                print(f'  Accuracy: {staging_metrics.get(\"accuracy\", \"N/A\")}')
+                print(f'  Crisis Detection: {staging_metrics.get(\"crisis_detection_recall\", \"N/A\")}')
+                
+                print(f'Production Model (v{production_model.version}):')
+                print(f'  Accuracy: {production_metrics.get(\"accuracy\", \"N/A\")}')
+                print(f'  Crisis Detection: {production_metrics.get(\"crisis_detection_recall\", \"N/A\")}')
+                
+                # Determine if staging model should be promoted
+                staging_acc = staging_metrics.get('accuracy', 0)
+                production_acc = production_metrics.get('accuracy', 0)
+                
+                improvement_threshold = 0.02  # 2% improvement required
+                should_promote = staging_acc > production_acc + improvement_threshold
+                
+                print(f'Should promote to production: {should_promote}')
+                
+                # Save comparison results
+                comparison = {
+                    'staging_version': staging_model.version,
+                    'production_version': production_model.version,
+                    'staging_accuracy': staging_acc,
+                    'production_accuracy': production_acc,
+                    'improvement': staging_acc - production_acc,
+                    'should_promote': should_promote
+                }
+                
+                with open('model_comparison.json', 'w') as f:
+                    json.dump(comparison, f, indent=2)
+                    
+            else:
+                print('Missing staging or production models for comparison')
+                
+        except Exception as e:
+            print(f'Error during model comparison: {e}')
+        "
+
+    - name: Upload comparison results
+      uses: actions/upload-artifact@v3
+      with:
+        name: model-comparison
+        path: model_comparison.json
+
+  notify-completion:
+    name: Notify Training Completion
+    runs-on: ubuntu-latest
+    needs: [data-validation, model-training, model-registration, performance-comparison]
+    if: always()
+    
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+
+    - name: Prepare notification
+      run: |
+        echo "Healthcare AI Model Training Pipeline completed"
+        echo "Data Quality Score: ${{ needs.data-validation.outputs.data-quality-score }}"
+        
+        if [ -f "artifacts/training-artifacts/model_validation_results.json" ]; then
+          echo "Model validation results:"
+          cat artifacts/training-artifacts/model_validation_results.json
+        fi
+        
+        if [ -f "artifacts/model-comparison/model_comparison.json" ]; then
+          echo "Model comparison results:"
+          cat artifacts/model-comparison/model_comparison.json
+        fi
+
+    - name: Slack notification
+      uses: 8398a7/action-slack@v3
+      if: always()
+      with:
+        status: ${{ job.status }}
+        text: |
+          Healthcare AI Model Training Pipeline: ${{ job.status }}
+          Data Quality: ${{ needs.data-validation.outputs.data-quality-score }}/100
+          Branch: ${{ github.ref }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
