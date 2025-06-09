@@ -17,12 +17,12 @@
   {
     "query": "How can I maintain social connections while managing my health condition?",
     "category": "senior_social",
-    "response": "Maintaining social connections is crucial for overall well-being. Consider these approaches: 1) Schedule regular phone calls or video chats with friends and family, 2) Join community centers or senior groups with health-conscious activities, 3) Participate in online communities related to your interests or condition, 4) Ask friends to visit or accompany you to appointments, 5) Consider volunteer opportunities that accommodate your health needs. Social support significantly benefits both physical and mental health."
+    "response": "Maintaining social connections is crucial for overall well-being. Consider these approaches: 1) Schedule regular phone calls or video chats with friends and family, 2) Join community centers or senior groups with health-conscious activities, 3) Participate in online communities related to your interests or condition, 4) Ask friends to visit or accompany you to appointments, 5) Consider volunteer opportunities that accommodate your health needs. Social support significantly benefits both physical and mental health. Please discuss any health-related social limitations with your healthcare provider for personalized guidance."
   },
   {
     "query": "I need help with personal care tasks but feel embarrassed to ask",
     "category": "adl_self_care",
-    "response": "Needing help with personal care is completely normal and nothing to be embarrassed about. Many people require assistance at various points in their lives. Here are some suggestions: 1) Start by talking to trusted family members or friends, 2) Consider professional home care services for privacy and expertise, 3) Explore adaptive equipment that can increase independence, 4) Speak with occupational therapists about techniques and tools, 5) Remember that accepting help shows strength and wisdom. Your dignity and comfort are the priority."
+    "response": "Needing help with personal care is completely normal and nothing to be embarrassed about. Many people require assistance at various points in their lives. Here are some suggestions: 1) Start by talking to trusted family members or friends, 2) Consider professional home care services for privacy and expertise, 3) Explore adaptive equipment that can increase independence, 4) Speak with occupational therapists about techniques and tools, 5) Remember that accepting help shows strength and wisdom. Your dignity and comfort are the priority. Please consult with your healthcare provider to assess your specific needs and available resources."
   },
   {
     "query": "I'm feeling isolated and depressed about my health situation",
