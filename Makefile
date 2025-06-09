@@ -83,6 +83,26 @@ format: ## Format code
 	source venv/bin/activate && black models/demo-llm/src/ scripts/
 	source venv/bin/activate && isort models/demo-llm/src/ scripts/
 
+validate: ## Run complete pre-commit validation pipeline
+	@echo "🔍 Running mandatory pre-commit validation checks..."
+	@echo "1. Code formatting check..."
+	python3 -m black --check --diff models/ scripts/ tests/ services/
+	@echo "2. Import sorting check..."
+	python3 -m isort --check-only --diff models/ scripts/ tests/ services/
+	@echo "3. Full test suite (CI pipeline)..."
+	python3 scripts/run_tests.py
+	@echo "4. ML pipeline validation..."
+	python3 scripts/test_mlops_pipeline.py
+	@echo "5. Security checks..."
+	python3 scripts/run_security_checks.py
+	@echo "6. HIPAA compliance validation..."
+	python3 scripts/hipaa_compliance_check.py
+	@echo "7. Crisis detection validation..."
+	python3 tests/crisis_detection_validation.py
+	@echo "8. Healthcare service health check..."
+	@curl -f http://localhost:8888/health > /dev/null 2>&1 || curl -f http://localhost:8080/health > /dev/null 2>&1 || echo "⚠️ Healthcare service not running (expected if not started)"
+	@echo "✅ ALL VALIDATION CHECKS PASSED - Safe to commit!"
+
 # Healthcare AI specific targets
 train-model: ## Train healthcare model
 	@echo "Training healthcare model..."

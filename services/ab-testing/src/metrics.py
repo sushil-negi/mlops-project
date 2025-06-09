@@ -2,21 +2,17 @@
 Metrics collection and aggregation for A/B testing experiments
 """
 
-import asyncio
-import json
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import httpx
 import redis.asyncio as redis
 import structlog
-from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
+from prometheus_client import CollectorRegistry, Counter, Histogram
 
 try:
-    from .models import ExperimentMetrics as ExperimentMetricsModel
     from .models import MetricSnapshot
 except ImportError:
-    from models import ExperimentMetrics as ExperimentMetricsModel
     from models import MetricSnapshot
 
 logger = structlog.get_logger()

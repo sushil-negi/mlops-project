@@ -3,7 +3,7 @@ Statistical analysis for A/B test results
 Determines if differences are statistically significant
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import numpy as np
 import scipy.stats as stats

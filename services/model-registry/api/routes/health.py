@@ -10,7 +10,7 @@ from typing import Any, Dict
 import redis
 from core.config import get_settings
 from core.database import check_db_connection
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)

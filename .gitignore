@@ -195,7 +195,6 @@ cython_debug/
 
 # MLOps Project Specific
 .claude/
-session.md
 training_summary.txt
 *.log
 kind

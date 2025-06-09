@@ -5,16 +5,19 @@ Model entity for the Model Registry
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict
 
 from core.database import Base
-from sqlalchemy import Column, DateTime, Enum as SQLEnum, JSON, String, Text
+from sqlalchemy import JSON, Column, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 
 class ModelStage(str, Enum):
     """Model lifecycle stages"""
+
     DEVELOPMENT = "development"
     STAGING = "staging"
     PRODUCTION = "production"
@@ -23,6 +26,7 @@ class ModelStage(str, Enum):
 
 class ModelFramework(str, Enum):
     """Supported ML frameworks"""
+
     SKLEARN = "sklearn"
     TENSORFLOW = "tensorflow"
     PYTORCH = "pytorch"
@@ -34,44 +38,52 @@ class ModelFramework(str, Enum):
 
 class Model(Base):
     """Model entity representing a machine learning model"""
-    
+
     __tablename__ = "models"
-    
+
     # Primary identification
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), unique=True, nullable=False, index=True)
     display_name = Column(String(255), nullable=True)
     description = Column(Text, nullable=True)
-    
+
     # Framework and type information
     framework = Column(SQLEnum(ModelFramework), nullable=False)
-    model_type = Column(String(100), nullable=False)  # classification, regression, clustering, etc.
-    task_type = Column(String(100), nullable=True)    # binary_classification, multi_class, etc.
-    
+    model_type = Column(
+        String(100), nullable=False
+    )  # classification, regression, clustering, etc.
+    task_type = Column(
+        String(100), nullable=True
+    )  # binary_classification, multi_class, etc.
+
     # Metadata
     tags = Column(JSON, default=list)  # List of tags for categorization
     metadata = Column(JSON, default=dict)  # Additional custom metadata
-    
+
     # Ownership and governance
     created_by = Column(String(255), nullable=False)
     team = Column(String(255), nullable=True)
     project = Column(String(255), nullable=True)
-    
+
     # Current state
     latest_version = Column(String(50), nullable=True)
     current_stage = Column(SQLEnum(ModelStage), default=ModelStage.DEVELOPMENT)
-    
+
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationships
-    versions = relationship("ModelVersion", back_populates="model", cascade="all, delete-orphan")
-    experiments = relationship("Experiment", back_populates="model", cascade="all, delete-orphan")
-    
+    versions = relationship(
+        "ModelVersion", back_populates="model", cascade="all, delete-orphan"
+    )
+    experiments = relationship(
+        "Experiment", back_populates="model", cascade="all, delete-orphan"
+    )
+
     def __repr__(self):
         return f"<Model(id={self.id}, name={self.name}, framework={self.framework})>"
-    
+
     def to_dict(self) -> Dict:
         """Convert model to dictionary representation"""
         return {

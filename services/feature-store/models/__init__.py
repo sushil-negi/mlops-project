@@ -1,14 +1,14 @@
 """Feature Store data models"""
 
-from .feature import Feature, FeatureType, FeatureStatus
+from .entity import Entity, EntityType
+from .feature import Feature, FeatureStatus, FeatureType
 from .feature_set import FeatureSet, FeatureSetStatus
 from .feature_value import FeatureValue
-from .entity import Entity, EntityType
-from .serving_request import ServingRequest, PointInTimeRequest
+from .serving_request import PointInTimeRequest, ServingRequest
 
 __all__ = [
     "Feature",
-    "FeatureType", 
+    "FeatureType",
     "FeatureStatus",
     "FeatureSet",
     "FeatureSetStatus",
@@ -16,5 +16,5 @@ __all__ = [
     "Entity",
     "EntityType",
     "ServingRequest",
-    "PointInTimeRequest"
+    "PointInTimeRequest",
 ]

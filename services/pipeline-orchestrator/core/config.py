@@ -38,8 +38,12 @@ class Settings(BaseSettings):
     STORAGE_ACCESS_KEY: str = Field(..., env="MINIO_ACCESS_KEY")
     STORAGE_SECRET_KEY: str = Field(..., env="MINIO_SECRET_KEY")
     STORAGE_SECURE: bool = Field(default=False, env="MINIO_SECURE")
-    STORAGE_BUCKET_PIPELINES: str = Field(default="pipelines", env="STORAGE_BUCKET_PIPELINES")
-    STORAGE_BUCKET_ARTIFACTS: str = Field(default="pipeline-artifacts", env="STORAGE_BUCKET_ARTIFACTS")
+    STORAGE_BUCKET_PIPELINES: str = Field(
+        default="pipelines", env="STORAGE_BUCKET_PIPELINES"
+    )
+    STORAGE_BUCKET_ARTIFACTS: str = Field(
+        default="pipeline-artifacts", env="STORAGE_BUCKET_ARTIFACTS"
+    )
 
     # Security settings
     SECRET_KEY: str = Field(
@@ -53,9 +57,13 @@ class Settings(BaseSettings):
     # Scheduler settings
     MAX_CONCURRENT_RUNS: int = Field(default=10, env="MAX_CONCURRENT_RUNS")
     MAX_WORKERS: int = Field(default=5, env="MAX_WORKERS")
-    TASK_TIMEOUT_SECONDS: int = Field(default=3600, env="TASK_TIMEOUT_SECONDS")  # 1 hour
-    HEARTBEAT_INTERVAL_SECONDS: int = Field(default=30, env="HEARTBEAT_INTERVAL_SECONDS")
-    
+    TASK_TIMEOUT_SECONDS: int = Field(
+        default=3600, env="TASK_TIMEOUT_SECONDS"
+    )  # 1 hour
+    HEARTBEAT_INTERVAL_SECONDS: int = Field(
+        default=30, env="HEARTBEAT_INTERVAL_SECONDS"
+    )
+
     # Resource limits
     MAX_CPU_CORES: float = Field(default=8.0, env="MAX_CPU_CORES")
     MAX_MEMORY_GB: float = Field(default=16.0, env="MAX_MEMORY_GB")
@@ -64,14 +72,23 @@ class Settings(BaseSettings):
     # Pipeline settings
     SUPPORTED_OPERATORS: List[str] = Field(
         default=[
-            "data_ingestion", "data_validation", "data_transformation",
-            "feature_engineering", "model_training", "model_validation",
-            "model_registration", "model_deployment", "monitoring_setup",
-            "notification", "conditional", "parallel", "loop"
+            "data_ingestion",
+            "data_validation",
+            "data_transformation",
+            "feature_engineering",
+            "model_training",
+            "model_validation",
+            "model_registration",
+            "model_deployment",
+            "monitoring_setup",
+            "notification",
+            "conditional",
+            "parallel",
+            "loop",
         ],
         env="SUPPORTED_OPERATORS",
     )
-    
+
     # Default resource requirements for tasks
     DEFAULT_TASK_RESOURCES: Dict[str, Dict] = Field(
         default={
@@ -88,9 +105,13 @@ class Settings(BaseSettings):
     )
 
     # External service URLs
-    MODEL_REGISTRY_URL: str = Field(default="http://localhost:8000", env="MODEL_REGISTRY_URL")
+    MODEL_REGISTRY_URL: str = Field(
+        default="http://localhost:8000", env="MODEL_REGISTRY_URL"
+    )
     FEATURE_STORE_URL: Optional[str] = Field(default=None, env="FEATURE_STORE_URL")
-    NOTIFICATION_WEBHOOK_URL: Optional[str] = Field(default=None, env="NOTIFICATION_WEBHOOK_URL")
+    NOTIFICATION_WEBHOOK_URL: Optional[str] = Field(
+        default=None, env="NOTIFICATION_WEBHOOK_URL"
+    )
 
     # Monitoring and metrics
     ENABLE_METRICS: bool = Field(default=True, env="ENABLE_METRICS")
@@ -99,12 +120,18 @@ class Settings(BaseSettings):
 
     # Pipeline execution settings
     ENABLE_DAG_VALIDATION: bool = Field(default=True, env="ENABLE_DAG_VALIDATION")
-    ENABLE_CHECKPOINT_RECOVERY: bool = Field(default=True, env="ENABLE_CHECKPOINT_RECOVERY")
-    CHECKPOINT_INTERVAL_SECONDS: int = Field(default=300, env="CHECKPOINT_INTERVAL_SECONDS")  # 5 minutes
-    
+    ENABLE_CHECKPOINT_RECOVERY: bool = Field(
+        default=True, env="ENABLE_CHECKPOINT_RECOVERY"
+    )
+    CHECKPOINT_INTERVAL_SECONDS: int = Field(
+        default=300, env="CHECKPOINT_INTERVAL_SECONDS"
+    )  # 5 minutes
+
     # Retry and error handling
     DEFAULT_RETRY_COUNT: int = Field(default=3, env="DEFAULT_RETRY_COUNT")
-    DEFAULT_RETRY_DELAY_SECONDS: int = Field(default=60, env="DEFAULT_RETRY_DELAY_SECONDS")
+    DEFAULT_RETRY_DELAY_SECONDS: int = Field(
+        default=60, env="DEFAULT_RETRY_DELAY_SECONDS"
+    )
     ENABLE_CIRCUIT_BREAKER: bool = Field(default=True, env="ENABLE_CIRCUIT_BREAKER")
 
     @validator("ALLOWED_HOSTS", pre=True)

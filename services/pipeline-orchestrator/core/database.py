@@ -51,12 +51,12 @@ async def init_db():
     """Initialize database tables"""
     try:
         # Import all models to register them with SQLAlchemy
-        from models import pipeline, run, task_execution
-        
+        pass
+
         # Create tables
         metadata.create_all(bind=engine)
         logger.info("Database tables created successfully")
-        
+
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
         raise

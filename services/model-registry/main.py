@@ -4,15 +4,13 @@ Main application entry point
 """
 
 import logging
-import os
 from contextlib import asynccontextmanager
-from typing import Optional
 
 from api.routes import health, metrics, models
 from core.config import get_settings
 from core.database import database, init_db
 from core.logging import setup_logging
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 

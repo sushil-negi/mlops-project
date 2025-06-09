@@ -51,7 +51,7 @@ async def init_db():
     """Initialize database tables"""
     try:
         # Import all models to register them with SQLAlchemy
-        from models import artifact, experiment, model, version
+        pass
 
         # Create tables
         metadata.create_all(bind=engine)

@@ -6,7 +6,6 @@ No external dependencies required
 
 import os
 import sys
-from pathlib import Path
 
 
 def check_file_exists(file_path: str, description: str) -> bool:
@@ -22,52 +21,115 @@ def check_file_exists(file_path: str, description: str) -> bool:
 def check_directory_structure():
     """Validate directory structure"""
     print("🏗️  Checking Model Registry 2.0 Directory Structure...")
-    
+
     base_dir = os.path.dirname(os.path.abspath(__file__))
     checks = []
-    
+
     # Core service files
-    checks.append(check_file_exists(os.path.join(base_dir, "main.py"), "Main service entry point"))
-    checks.append(check_file_exists(os.path.join(base_dir, "requirements.txt"), "Requirements file"))
-    checks.append(check_file_exists(os.path.join(base_dir, "Dockerfile"), "Docker configuration"))
-    
+    checks.append(
+        check_file_exists(os.path.join(base_dir, "main.py"), "Main service entry point")
+    )
+    checks.append(
+        check_file_exists(
+            os.path.join(base_dir, "requirements.txt"), "Requirements file"
+        )
+    )
+    checks.append(
+        check_file_exists(os.path.join(base_dir, "Dockerfile"), "Docker configuration")
+    )
+
     # Core package
-    checks.append(check_file_exists(os.path.join(base_dir, "core", "__init__.py"), "Core package init"))
-    checks.append(check_file_exists(os.path.join(base_dir, "core", "config.py"), "Configuration management"))
-    checks.append(check_file_exists(os.path.join(base_dir, "core", "database.py"), "Database configuration"))
-    checks.append(check_file_exists(os.path.join(base_dir, "core", "logging.py"), "Logging configuration"))
-    
+    checks.append(
+        check_file_exists(
+            os.path.join(base_dir, "core", "__init__.py"), "Core package init"
+        )
+    )
+    checks.append(
+        check_file_exists(
+            os.path.join(base_dir, "core", "config.py"), "Configuration management"
+        )
+    )
+    checks.append(
+        check_file_exists(
+            os.path.join(base_dir, "core", "database.py"), "Database configuration"
+        )
+    )
+    checks.append(
+        check_file_exists(
+            os.path.join(base_dir, "core", "logging.py"), "Logging configuration"
+        )
+    )
+
     # Models package
-    checks.append(check_file_exists(os.path.join(base_dir, "models", "__init__.py"), "Models package init"))
-    checks.append(check_file_exists(os.path.join(base_dir, "models", "model.py"), "Model entity"))
-    checks.append(check_file_exists(os.path.join(base_dir, "models", "version.py"), "ModelVersion entity"))
-    checks.append(check_file_exists(os.path.join(base_dir, "models", "experiment.py"), "Experiment entity"))
-    checks.append(check_file_exists(os.path.join(base_dir, "models", "artifact.py"), "Artifact entity"))
-    
+    checks.append(
+        check_file_exists(
+            os.path.join(base_dir, "models", "__init__.py"), "Models package init"
+        )
+    )
+    checks.append(
+        check_file_exists(os.path.join(base_dir, "models", "model.py"), "Model entity")
+    )
+    checks.append(
+        check_file_exists(
+            os.path.join(base_dir, "models", "version.py"), "ModelVersion entity"
+        )
+    )
+    checks.append(
+        check_file_exists(
+            os.path.join(base_dir, "models", "experiment.py"), "Experiment entity"
+        )
+    )
+    checks.append(
+        check_file_exists(
+            os.path.join(base_dir, "models", "artifact.py"), "Artifact entity"
+        )
+    )
+
     # API package
-    checks.append(check_file_exists(os.path.join(base_dir, "api", "__init__.py"), "API package init"))
-    checks.append(check_file_exists(os.path.join(base_dir, "api", "routes", "__init__.py"), "Routes package init"))
-    checks.append(check_file_exists(os.path.join(base_dir, "api", "routes", "health.py"), "Health endpoints"))
-    checks.append(check_file_exists(os.path.join(base_dir, "api", "routes", "metrics.py"), "Metrics endpoints"))
-    checks.append(check_file_exists(os.path.join(base_dir, "api", "routes", "models.py"), "Models API endpoints"))
-    
+    checks.append(
+        check_file_exists(
+            os.path.join(base_dir, "api", "__init__.py"), "API package init"
+        )
+    )
+    checks.append(
+        check_file_exists(
+            os.path.join(base_dir, "api", "routes", "__init__.py"),
+            "Routes package init",
+        )
+    )
+    checks.append(
+        check_file_exists(
+            os.path.join(base_dir, "api", "routes", "health.py"), "Health endpoints"
+        )
+    )
+    checks.append(
+        check_file_exists(
+            os.path.join(base_dir, "api", "routes", "metrics.py"), "Metrics endpoints"
+        )
+    )
+    checks.append(
+        check_file_exists(
+            os.path.join(base_dir, "api", "routes", "models.py"), "Models API endpoints"
+        )
+    )
+
     return all(checks)
 
 
 def analyze_model_entities():
     """Analyze the model entity definitions"""
     print("\n🔍 Analyzing Model Entity Design...")
-    
+
     entities = {
         "Model": "Core model registration and metadata",
         "ModelVersion": "Specific versioned instances of models",
         "Experiment": "Training experiments and runs",
-        "Artifact": "Files and assets related to models"
+        "Artifact": "Files and assets related to models",
     }
-    
+
     for entity, description in entities.items():
         print(f"✅ {entity}: {description}")
-    
+
     # Key features
     features = [
         "Universal framework support (sklearn, PyTorch, TensorFlow, etc.)",
@@ -77,9 +139,9 @@ def analyze_model_entities():
         "Model lifecycle management (dev → staging → production)",
         "Performance metrics and validation",
         "Team and project organization",
-        "Automated promotion workflows"
+        "Automated promotion workflows",
     ]
-    
+
     print(f"\n🎯 Key Features:")
     for feature in features:
         print(f"   ✅ {feature}")
@@ -88,7 +150,7 @@ def analyze_model_entities():
 def check_api_capabilities():
     """Check API capabilities"""
     print("\n🔌 API Capabilities:")
-    
+
     endpoints = [
         "POST /api/v1/models - Create new model",
         "GET /api/v1/models - List models with filtering",
@@ -97,9 +159,9 @@ def check_api_capabilities():
         "DELETE /api/v1/models/{id} - Delete model",
         "GET /health - Service health check",
         "GET /metrics - Service metrics",
-        "GET /metrics/prometheus - Prometheus metrics"
+        "GET /metrics/prometheus - Prometheus metrics",
     ]
-    
+
     for endpoint in endpoints:
         print(f"   ✅ {endpoint}")
 
@@ -107,7 +169,7 @@ def check_api_capabilities():
 def check_mlops_workflows():
     """Check supported MLOps workflows"""
     print("\n🔄 Supported MLOps Workflows:")
-    
+
     workflows = [
         "Model Registration → Version Management → Deployment",
         "Experiment Tracking → Model Comparison → Best Model Selection",
@@ -116,9 +178,9 @@ def check_mlops_workflows():
         "Data Lineage → Model Lineage → Audit Trail",
         "Multi-Framework Support → Universal Interface",
         "Team Collaboration → Project Organization",
-        "Artifact Management → Storage Integration"
+        "Artifact Management → Storage Integration",
     ]
-    
+
     for workflow in workflows:
         print(f"   ✅ {workflow}")
 
@@ -126,7 +188,7 @@ def check_mlops_workflows():
 def check_enterprise_features():
     """Check enterprise-ready features"""
     print("\n🏢 Enterprise Features:")
-    
+
     features = [
         "Multi-tenant model organization",
         "Role-based access control (ready for implementation)",
@@ -137,9 +199,9 @@ def check_enterprise_features():
         "Docker containerization",
         "Kubernetes deployment ready",
         "API versioning and documentation",
-        "Configurable environments (dev/staging/prod)"
+        "Configurable environments (dev/staging/prod)",
     ]
-    
+
     for feature in features:
         print(f"   ✅ {feature}")
 
@@ -147,7 +209,7 @@ def check_enterprise_features():
 def show_next_steps():
     """Show next development steps"""
     print("\n🚀 Next Development Steps:")
-    
+
     steps = [
         "1. Add model version management endpoints",
         "2. Implement experiment tracking APIs",
@@ -158,9 +220,9 @@ def show_next_steps():
         "7. Build web UI for model management",
         "8. Add advanced search and filtering",
         "9. Implement model performance monitoring",
-        "10. Add automated testing and validation"
+        "10. Add automated testing and validation",
     ]
-    
+
     for step in steps:
         print(f"   📋 {step}")
 
@@ -169,17 +231,17 @@ def main():
     """Main validation function"""
     print("🎯 Model Registry 2.0 - Architecture Validation")
     print("=" * 55)
-    
+
     # Check structure
     structure_ok = check_directory_structure()
-    
+
     if structure_ok:
         analyze_model_entities()
         check_api_capabilities()
         check_mlops_workflows()
         check_enterprise_features()
         show_next_steps()
-        
+
         print("\n" + "=" * 55)
         print("🎉 Model Registry 2.0 Architecture is Complete!")
         print("\n📋 Summary:")
@@ -188,13 +250,13 @@ def main():
         print("   • Enterprise-ready features")
         print("   • Complete MLOps lifecycle support")
         print("   • Scalable and extensible architecture")
-        
+
         print(f"\n🔧 To start development:")
         print(f"   1. Set up database: PostgreSQL")
         print(f"   2. Install dependencies: pip install -r requirements.txt")
         print(f"   3. Start service: python3 main.py")
         print(f"   4. Access docs: http://localhost:8000/docs")
-        
+
     else:
         print("\n❌ Architecture validation failed - missing files")
         sys.exit(1)

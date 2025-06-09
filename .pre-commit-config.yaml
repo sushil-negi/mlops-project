@@ -1,0 +1,56 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        args: [--check, --diff]
+        files: ^(models|scripts|tests|services)/.*\.py$
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: [--check-only, --diff]
+        files: ^(models|scripts|tests|services)/.*\.py$
+
+  - repo: local
+    hooks:
+      - id: run-tests
+        name: Run full test suite
+        entry: python3
+        args: [scripts/run_tests.py]
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: ml-pipeline-validation
+        name: ML pipeline validation
+        entry: python3
+        args: [scripts/test_mlops_pipeline.py]
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: security-checks
+        name: Security checks
+        entry: python3
+        args: [scripts/run_security_checks.py]
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: hipaa-compliance
+        name: HIPAA compliance validation
+        entry: python3
+        args: [scripts/hipaa_compliance_check.py]
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: crisis-detection
+        name: Crisis detection validation
+        entry: python3
+        args: [tests/crisis_detection_validation.py]
+        language: system
+        pass_filenames: false
+        always_run: true

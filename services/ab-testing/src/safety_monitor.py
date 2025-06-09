@@ -6,7 +6,7 @@ Ensures healthcare safety thresholds are maintained
 import asyncio
 import json
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import httpx
 import structlog

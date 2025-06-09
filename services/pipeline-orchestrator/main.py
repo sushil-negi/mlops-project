@@ -32,27 +32,27 @@ scheduler: Optional[PipelineScheduler] = None
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     global scheduler
-    
+
     # Startup
     logger.info("Starting Pipeline Orchestrator Service")
     await database.connect()
     await init_db()
-    
+
     # Initialize scheduler
     scheduler = PipelineScheduler()
     await scheduler.start()
     logger.info("Pipeline scheduler started")
-    
+
     logger.info("Pipeline Orchestrator Service started successfully")
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down Pipeline Orchestrator Service")
     if scheduler:
         await scheduler.stop()
         logger.info("Pipeline scheduler stopped")
-    
+
     await database.disconnect()
     logger.info("Pipeline Orchestrator Service stopped")
 
@@ -92,7 +92,11 @@ async def http_exception_handler(request, exc):
                 "code": exc.status_code,
                 "message": exc.detail,
                 "type": "HTTPException",
-                "timestamp": str(request.state.start_time if hasattr(request.state, 'start_time') else None)
+                "timestamp": str(
+                    request.state.start_time
+                    if hasattr(request.state, "start_time")
+                    else None
+                ),
             }
         },
     )
@@ -109,7 +113,11 @@ async def general_exception_handler(request, exc):
                 "code": 500,
                 "message": "Internal server error",
                 "type": "InternalServerError",
-                "timestamp": str(request.state.start_time if hasattr(request.state, 'start_time') else None)
+                "timestamp": str(
+                    request.state.start_time
+                    if hasattr(request.state, "start_time")
+                    else None
+                ),
             }
         },
     )
@@ -135,8 +143,8 @@ async def root():
             "ML-specific operators",
             "Intelligent scheduling",
             "Event-driven triggers",
-            "Real-time monitoring"
-        ]
+            "Real-time monitoring",
+        ],
     }
 
 
@@ -146,13 +154,13 @@ async def get_scheduler_status():
     global scheduler
     if not scheduler:
         return {"status": "not_initialized"}
-    
+
     return {
         "status": "running" if scheduler.is_running else "stopped",
         "active_runs": scheduler.get_active_run_count(),
         "queued_tasks": scheduler.get_queued_task_count(),
         "completed_runs_24h": scheduler.get_completed_runs_count(hours=24),
-        "resource_usage": scheduler.get_resource_usage()
+        "resource_usage": scheduler.get_resource_usage(),
     }
 
 

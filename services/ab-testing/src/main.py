@@ -5,19 +5,16 @@ Manages experiments, routes traffic, and ensures safety
 
 import asyncio
 import hashlib
-import json
 import os
 from datetime import datetime
 from typing import Dict, List, Optional
 
-import httpx
 import redis.asyncio as redis
 import structlog
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import Counter, Gauge, Histogram, generate_latest
+from prometheus_client import Counter, Gauge, generate_latest
 from prometheus_client.core import CollectorRegistry
-from pydantic import BaseModel, Field
 
 try:
     from .metrics import ExperimentMetrics

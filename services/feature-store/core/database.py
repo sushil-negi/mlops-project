@@ -22,7 +22,7 @@ engine = create_engine(
     pool_size=settings.DATABASE_POOL_SIZE,
     max_overflow=settings.DATABASE_POOL_OVERFLOW,
     pool_pre_ping=True,
-    echo=settings.DEBUG
+    echo=settings.DEBUG,
 )
 
 # Create session factory
@@ -38,11 +38,11 @@ async def init_db():
     try:
         await database.connect()
         logger.info("Database connection established")
-        
+
         # Create tables if they don't exist
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables initialized")
-        
+
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
         raise

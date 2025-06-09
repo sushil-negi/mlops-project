@@ -3,14 +3,10 @@ Feature Store 2.0 - Real-time Feature Management Platform
 Centralized feature repository with versioning, lineage, and serving
 """
 
-import logging
-import os
-import sys
 from contextlib import asynccontextmanager
-from typing import Dict
 
 import uvicorn
-from api.routes import features, feature_sets, serving, monitoring, health
+from api.routes import feature_sets, features, health, monitoring, serving
 from core.config import settings
 from core.database import init_db
 from core.logging import setup_logging
@@ -25,26 +21,28 @@ logger = setup_logging()
 async def lifespan(app: FastAPI):
     """Manage application lifecycle"""
     logger.info("Starting Feature Store 2.0...")
-    
+
     # Initialize database
     await init_db()
-    
+
     # Initialize feature storage
     from storage.feature_storage import FeatureStorage
+
     storage = FeatureStorage()
     await storage.initialize()
     app.state.storage = storage
-    
+
     # Initialize serving engine
     from core.serving_engine import ServingEngine
+
     serving_engine = ServingEngine(storage)
     await serving_engine.start()
     app.state.serving_engine = serving_engine
-    
+
     logger.info("Feature Store 2.0 started successfully")
-    
+
     yield
-    
+
     # Cleanup
     logger.info("Shutting down Feature Store 2.0...")
     await serving_engine.stop()
@@ -56,7 +54,7 @@ app = FastAPI(
     title="Feature Store 2.0",
     description="Enterprise Feature Management Platform for MLOps",
     version="2.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Configure CORS
@@ -71,7 +69,9 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router, tags=["health"])
 app.include_router(features.router, prefix="/api/v1/features", tags=["features"])
-app.include_router(feature_sets.router, prefix="/api/v1/feature-sets", tags=["feature-sets"])
+app.include_router(
+    feature_sets.router, prefix="/api/v1/feature-sets", tags=["feature-sets"]
+)
 app.include_router(serving.router, prefix="/api/v1/serving", tags=["serving"])
 app.include_router(monitoring.router, prefix="/monitoring", tags=["monitoring"])
 
@@ -85,20 +85,20 @@ async def root():
         "status": "operational",
         "description": "Enterprise Feature Management Platform",
         "documentation": "/docs",
-        "health": "/health"
+        "health": "/health",
     }
 
 
 def main():
     """Run the Feature Store service"""
     logger.info(f"Starting Feature Store on {settings.HOST}:{settings.PORT}")
-    
+
     uvicorn.run(
         "main:app",
         host=settings.HOST,
         port=settings.PORT,
         reload=settings.DEBUG,
-        log_level=settings.LOG_LEVEL.lower()
+        log_level=settings.LOG_LEVEL.lower(),
     )
 
 
