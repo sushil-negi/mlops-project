@@ -180,15 +180,73 @@ class TestResponseQualityE2E:
 
     def test_response_quality_metrics_e2e(self, service_url):
         """Test response quality metrics end-to-end"""
-        queries = [
-            "I need help with daily bathing",
-            "My mother forgets her medications",
-            "Feeling isolated as a senior",
-            "Need equipment for limited mobility",
-            "Anxious about health conditions",
+        test_cases = [
+            {
+                "query": "I need help with daily bathing",
+                "expected_topics": [
+                    "shower",
+                    "bath",
+                    "adaptive",
+                    "adl",
+                    "assist",
+                    "hygiene",
+                    "safety",
+                ],
+            },
+            {
+                "query": "My mother forgets her medications",
+                "expected_topics": [
+                    "medication",
+                    "pill",
+                    "reminder",
+                    "pharmacy",
+                    "memory",
+                    "senior",
+                    "management",
+                ],
+            },
+            {
+                "query": "Feeling isolated as a senior",
+                "expected_topics": [
+                    "social",
+                    "community",
+                    "senior",
+                    "isolation",
+                    "activities",
+                    "support",
+                    "lonely",
+                ],
+            },
+            {
+                "query": "Need equipment for limited mobility",
+                "expected_topics": [
+                    "mobility",
+                    "equipment",
+                    "walker",
+                    "cane",
+                    "adaptive",
+                    "assist",
+                    "movement",
+                ],
+            },
+            {
+                "query": "Anxious about health conditions",
+                "expected_topics": [
+                    "anxiety",
+                    "stress",
+                    "mental",
+                    "health",
+                    "breathing",
+                    "coping",
+                    "worry",
+                ],
+            },
         ]
 
-        for query in queries:
+        for test_case in test_cases:
+            query = test_case["query"]
+            expected_topics = test_case["expected_topics"]
+
             response = requests.post(
                 f"{service_url}/chat", json={"message": query}, timeout=10
             )
@@ -208,9 +266,12 @@ class TestResponseQualityE2E:
             # Should have professional tone
             assert "⚠️" in response_text or "professional" in response_text.lower()
 
-            # Should be specific to query topic
-            query_words = query.lower().split()
-            assert any(word in response_text.lower() for word in query_words)
+            # Should be topically relevant (check for healthcare topic words)
+            response_lower = response_text.lower()
+            topic_match = any(topic in response_lower for topic in expected_topics)
+            assert (
+                topic_match
+            ), f"Response for '{query}' should contain at least one of: {expected_topics}"
 
     def test_error_handling_e2e(self, service_url):
         """Test error handling end-to-end"""
