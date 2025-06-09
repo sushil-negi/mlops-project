@@ -148,6 +148,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install pytest pytest-cov pytest-mock
         python -m pip install -r models/healthcare-ai/requirements.txt
+        python -m pip install -r services/ab-testing/requirements.txt
         python -m pip install scikit-learn pandas numpy joblib requests
 
     - name: Download test data
