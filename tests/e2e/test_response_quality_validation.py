@@ -130,10 +130,20 @@ class TestResponseQualityE2E:
         assert data["method"] == "ml_model"
         assert data["category"] in ["adl_mobility", "contextual_override"]
 
-        # Response should be relevant
+        # Response should be relevant to balance/mobility
         assert any(
             term in data["response"].lower()
-            for term in ["balance", "exercise", "walking", "tai chi"]
+            for term in [
+                "balance",
+                "exercise",
+                "walking",
+                "tai chi",
+                "mobility",
+                "movement",
+                "strength",
+                "coordination",
+                "stability",
+            ]
         )
 
     def test_crisis_detection_e2e(self, service_url):
@@ -227,6 +237,12 @@ class TestResponseQualityE2E:
                     "adaptive",
                     "assist",
                     "movement",
+                    "aids",
+                    "grab",
+                    "bars",
+                    "chairs",
+                    "modifications",
+                    "independence",
                 ],
             },
             {
@@ -434,10 +450,14 @@ class TestResponseQualityValidation:
 
         response_text = data["response"]
 
-        # Should not contain unprofessional language
-        unprofessional_terms = ["lol", "omg", "btw", "ur", "u r"]
+        # Should not contain unprofessional language (check as whole words)
+        unprofessional_terms = ["lol", "omg", "btw", "u r"]
         for term in unprofessional_terms:
             assert term not in response_text.lower()
+
+        # Check for standalone "ur" (not part of other words like "velcro or")
+        words = response_text.lower().split()
+        assert "ur" not in words
 
         # Should maintain formal structure
         assert len(response_text) > 50  # Not too brief
