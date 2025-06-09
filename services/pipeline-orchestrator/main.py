@@ -151,7 +151,6 @@ async def root():
 @app.get("/scheduler/status")
 async def get_scheduler_status():
     """Get scheduler status"""
-    global scheduler
     if not scheduler:
         return {"status": "not_initialized"}
 
