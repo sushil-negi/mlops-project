@@ -1,0 +1,421 @@
+version: '3.8'
+
+# Multi-environment Docker Compose with port separation
+# Usage:
+#   Dev:     docker-compose -f docker-compose.multi-env.yml --profile dev up
+#   Staging: docker-compose -f docker-compose.multi-env.yml --profile staging up
+#   Both:    docker-compose -f docker-compose.multi-env.yml --profile dev --profile staging up
+
+services:
+  # =============================================================================
+  # DEVELOPMENT ENVIRONMENT (Original Ports)
+  # =============================================================================
+  
+  # Databases - Dev
+  postgres-dev:
+    image: postgres:14
+    profiles: ["dev"]
+    environment:
+      POSTGRES_DB: mlflow_dev
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - dev-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis-dev:
+    image: redis:7-alpine
+    profiles: ["dev"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - dev-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Storage - Dev
+  minio-dev:
+    image: minio/minio:latest
+    profiles: ["dev"]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_dev_data:/data
+    networks:
+      - dev-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # MLflow - Dev
+  mlflow-dev:
+    build:
+      context: ./services/mlflow
+      dockerfile: Dockerfile
+    profiles: ["dev"]
+    container_name: mlops-mlflow-dev
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow:mlflow123@postgres-dev:5432/mlflow_dev
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=s3://mlflow-artifacts-dev/
+      - AWS_ACCESS_KEY_ID=mlflow
+      - AWS_SECRET_ACCESS_KEY=mlflow123
+      - MLFLOW_S3_ENDPOINT_URL=http://minio-dev:9000
+      - AWS_S3_VERIFY_SSL=false
+      - MLFLOW_S3_IGNORE_TLS=true
+      - ENVIRONMENT=development
+    ports:
+      - "5050:5000"
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
+      minio-dev:
+        condition: service_healthy
+    networks:
+      - dev-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Healthcare AI - Dev
+  healthcare-ai-dev:
+    build:
+      context: ./models/healthcare-ai
+      dockerfile: Dockerfile
+    profiles: ["dev"]
+    container_name: mlops-healthcare-ai-dev
+    ports:
+      - "8080:8000"
+    environment:
+      - MODEL_NAME=healthcare-ai-dev
+      - MODEL_VERSION=latest
+      - ENVIRONMENT=development
+      - MLFLOW_TRACKING_URI=http://mlflow-dev:5000
+      - REDIS_URL=redis://redis-dev:6379
+    depends_on:
+      - mlflow-dev
+      - redis-dev
+    networks:
+      - dev-network
+    volumes:
+      - model_dev_artifacts:/app/artifacts
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # A/B Testing Service - Dev
+  ab-testing-dev:
+    build:
+      context: ./services/ab-testing
+      dockerfile: Dockerfile
+    profiles: ["dev"]
+    container_name: mlops-ab-testing-dev
+    ports:
+      - "8090:8000"
+    environment:
+      - REDIS_URL=redis://redis-dev:6379
+      - PROMETHEUS_URL=http://prometheus-dev:9090
+      - ALERTMANAGER_URL=http://alertmanager-dev:9093
+      - ENVIRONMENT=development
+    depends_on:
+      - redis-dev
+      - prometheus-dev
+    networks:
+      - dev-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring - Dev
+  prometheus-dev:
+    image: prom/prometheus:v2.45.0
+    profiles: ["dev"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./infrastructure/docker/prometheus/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus_dev_data:/prometheus
+    networks:
+      - dev-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+
+  grafana-dev:
+    image: grafana/grafana:10.0.0
+    profiles: ["dev"]
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - ./infrastructure/docker/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_dev_data:/var/lib/grafana
+    networks:
+      - dev-network
+    depends_on:
+      - prometheus-dev
+
+  alertmanager-dev:
+    image: prom/alertmanager:v0.25.0
+    profiles: ["dev"]
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./services/ab-testing/config/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_dev_data:/alertmanager
+    networks:
+      - dev-network
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+
+  # =============================================================================
+  # STAGING ENVIRONMENT (Ports + 1000)
+  # =============================================================================
+  
+  # Databases - Staging
+  postgres-staging:
+    image: postgres:14
+    profiles: ["staging"]
+    environment:
+      POSTGRES_DB: mlflow_staging
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow123
+    ports:
+      - "6432:5432"  # 5432 + 1000
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+    networks:
+      - staging-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis-staging:
+    image: redis:7-alpine
+    profiles: ["staging"]
+    ports:
+      - "7379:6379"  # 6379 + 1000
+    volumes:
+      - redis_staging_data:/data
+    networks:
+      - staging-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Storage - Staging
+  minio-staging:
+    image: minio/minio:latest
+    profiles: ["staging"]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "10000:9000"  # 9000 + 1000
+      - "10001:9001"  # 9001 + 1000
+    volumes:
+      - minio_staging_data:/data
+    networks:
+      - staging-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # MLflow - Staging
+  mlflow-staging:
+    build:
+      context: ./services/mlflow
+      dockerfile: Dockerfile
+    profiles: ["staging"]
+    container_name: mlops-mlflow-staging
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow:mlflow123@postgres-staging:5432/mlflow_staging
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=s3://mlflow-artifacts-staging/
+      - AWS_ACCESS_KEY_ID=mlflow
+      - AWS_SECRET_ACCESS_KEY=mlflow123
+      - MLFLOW_S3_ENDPOINT_URL=http://minio-staging:9000
+      - AWS_S3_VERIFY_SSL=false
+      - MLFLOW_S3_IGNORE_TLS=true
+      - ENVIRONMENT=staging
+    ports:
+      - "6050:5000"  # 5050 + 1000
+    depends_on:
+      postgres-staging:
+        condition: service_healthy
+      minio-staging:
+        condition: service_healthy
+    networks:
+      - staging-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Healthcare AI - Staging
+  healthcare-ai-staging:
+    build:
+      context: ./models/healthcare-ai
+      dockerfile: Dockerfile
+    profiles: ["staging"]
+    container_name: mlops-healthcare-ai-staging
+    ports:
+      - "9080:8000"  # 8080 + 1000
+    environment:
+      - MODEL_NAME=healthcare-ai-staging
+      - MODEL_VERSION=release-candidate
+      - ENVIRONMENT=staging
+      - MLFLOW_TRACKING_URI=http://mlflow-staging:5000
+      - REDIS_URL=redis://redis-staging:6379
+    depends_on:
+      - mlflow-staging
+      - redis-staging
+    networks:
+      - staging-network
+    volumes:
+      - model_staging_artifacts:/app/artifacts
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # A/B Testing Service - Staging
+  ab-testing-staging:
+    build:
+      context: ./services/ab-testing
+      dockerfile: Dockerfile
+    profiles: ["staging"]
+    container_name: mlops-ab-testing-staging
+    ports:
+      - "9090:8000"  # 8090 + 1000
+    environment:
+      - REDIS_URL=redis://redis-staging:6379
+      - PROMETHEUS_URL=http://prometheus-staging:9090
+      - ALERTMANAGER_URL=http://alertmanager-staging:9093
+      - ENVIRONMENT=staging
+    depends_on:
+      - redis-staging
+      - prometheus-staging
+    networks:
+      - staging-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring - Staging
+  prometheus-staging:
+    image: prom/prometheus:v2.45.0
+    profiles: ["staging"]
+    ports:
+      - "10090:9090"  # 9090 + 1000
+    volumes:
+      - ./infrastructure/docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./infrastructure/docker/prometheus/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus_staging_data:/prometheus
+    networks:
+      - staging-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+
+  grafana-staging:
+    image: grafana/grafana:10.0.0
+    profiles: ["staging"]
+    ports:
+      - "4001:3000"  # 3001 + 1000
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - ./infrastructure/docker/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_staging_data:/var/lib/grafana
+    networks:
+      - staging-network
+    depends_on:
+      - prometheus-staging
+
+  alertmanager-staging:
+    image: prom/alertmanager:v0.25.0
+    profiles: ["staging"]
+    ports:
+      - "10093:9093"  # 9093 + 1000
+    volumes:
+      - ./services/ab-testing/config/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_staging_data:/alertmanager
+    networks:
+      - staging-network
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+
+volumes:
+  # Dev volumes
+  postgres_dev_data:
+  redis_dev_data:
+  minio_dev_data:
+  model_dev_artifacts:
+  prometheus_dev_data:
+  grafana_dev_data:
+  alertmanager_dev_data:
+  
+  # Staging volumes
+  postgres_staging_data:
+  redis_staging_data:
+  minio_staging_data:
+  model_staging_artifacts:
+  prometheus_staging_data:
+  grafana_staging_data:
+  alertmanager_staging_data:
+
+networks:
+  dev-network:
+    name: mlops-dev-network
+  staging-network:
+    name: mlops-staging-network

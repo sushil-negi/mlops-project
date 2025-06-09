@@ -11,12 +11,28 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # Demo LLM Model
-  - job_name: 'demo-llm'
+  # Healthcare AI Model
+  - job_name: 'healthcare-ai'
     static_configs:
-      - targets: ['demo-llm:8000']
+      - targets: ['healthcare-ai:8000', 'mlops-project-healthcare-ai-1:8000']
     metrics_path: /metrics
     scrape_interval: 10s
+    
+  # Healthcare AI Kubernetes Pods
+  - job_name: 'healthcare-ai-k8s'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - healthcare-ai-staging
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: keep
+        regex: healthcare-ai
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
 
   # Model Registry
   - job_name: 'model-registry'
