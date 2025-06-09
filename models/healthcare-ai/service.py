@@ -37,30 +37,12 @@ if not ENGINES_AVAILABLE:
             self.conversation_history = []
 
         def generate_response(self, message):
-            response = self.response_engine.get_response(message)
-            return {
-                "response": response,
-                "category": "general_healthcare",
-                "confidence": 0.8,
-                "method": "rule_based",
-                "generation_time": 0.1,
-            }
+            # Use the updated HealthcareResponseEngine which has method field and crisis detection
+            return self.response_engine.generate_response(message)
 
         def get_stats(self):
-            return {
-                "model_loaded": True,
-                "categories": 4,
-                "category_list": [
-                    "adl",
-                    "senior_care",
-                    "mental_health",
-                    "respite_care",
-                ],
-                "total_responses": 12,
-                "cache_size": 0,
-                "conversation_history": len(self.conversation_history),
-                "model_type": "Rule-based Healthcare Engine",
-            }
+            # Use the updated get_stats from HealthcareResponseEngine
+            return self.response_engine.get_stats()
 
 
 # Configure logging
@@ -78,24 +60,14 @@ class HealthcareAIHandler(BaseHTTPRequestHandler):
         if not hasattr(self.__class__, "ai_engine"):
             logger.info("Initializing Healthcare AI Engine...")
 
-            if ENGINES_AVAILABLE:
-                # Try trained model first
-                try:
-                    logger.info("Attempting to load trained ML model...")
-                    self.__class__.ai_engine = HealthcareTrainedEngine()
-                    logger.info("✅ Trained ML model loaded successfully")
-                except Exception as e:
-                    logger.warning(f"Trained model failed: {e}")
-                    try:
-                        logger.info("Falling back to AI engine...")
-                        self.__class__.ai_engine = HealthcareAIEngine(use_llm=False)
-                        logger.info("✅ AI engine loaded successfully")
-                    except Exception as e2:
-                        logger.warning(f"AI engine failed: {e2}")
-                        logger.info("Using basic healthcare engine")
-                        self.__class__.ai_engine = BasicHealthcareEngine()
-            else:
-                logger.info("Using basic healthcare engine")
+            # Always use our updated HealthcareResponseEngine for E2E compatibility
+            try:
+                logger.info("Loading Healthcare Response Engine...")
+                self.__class__.ai_engine = HealthcareResponseEngine()
+                logger.info("✅ Healthcare Response Engine loaded successfully")
+            except Exception as e:
+                logger.warning(f"Healthcare Response Engine failed: {e}")
+                logger.info("Using basic healthcare engine fallback")
                 self.__class__.ai_engine = BasicHealthcareEngine()
 
         super().__init__(*args, **kwargs)
