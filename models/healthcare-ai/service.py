@@ -32,6 +32,7 @@ from healthcare_model import HealthcareResponseEngine
 
 # If engines not available, create a basic fallback
 if not ENGINES_AVAILABLE:
+
     class BasicHealthcareEngine:
         def __init__(self):
             self.response_engine = HealthcareResponseEngine()
