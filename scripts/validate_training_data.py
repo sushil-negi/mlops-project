@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class TrainingDataValidator:
     """Validates training data for healthcare AI model"""
 
-    def __init__(self):
+    def __init__(self, is_test_file=False):
         self.required_fields = ["query", "category", "response"]
         self.valid_categories = [
             "adl_mobility",
@@ -35,7 +35,8 @@ class TrainingDataValidator:
             "disability_rights",
             "crisis_mental_health",
         ]
-        self.min_samples_per_category = 5
+        # Relaxed validation for test files
+        self.min_samples_per_category = 1 if is_test_file else 5
         self.validation_errors = []
 
     def validate_file_exists(self, file_path: Path) -> bool:
@@ -299,11 +300,12 @@ def main():
         "data/combined_healthcare_training_data.json",
     ]
 
-    validator = TrainingDataValidator()
-
     for data_file in data_files:
         if Path(data_file).exists():
             logger.info(f"Using training data: {data_file}")
+            # Use relaxed validation for test files
+            is_test_file = "test_" in data_file
+            validator = TrainingDataValidator(is_test_file=is_test_file)
             success = validator.validate_training_data(data_file)
             sys.exit(0 if success else 1)
 

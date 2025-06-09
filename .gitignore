@@ -223,5 +223,7 @@ security_scan_results.json
 pipeline_run_info.json
 
 # Test data (can be generated or downloaded)
+# Note: data/test_healthcare_training.json is kept for CI/ML pipeline validation
 data/test_*.json
+!data/test_healthcare_training.json
 */data/test_*.json
