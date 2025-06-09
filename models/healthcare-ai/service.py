@@ -27,10 +27,11 @@ except ImportError as e:
 # Configuration
 USE_TRAINED_MODEL = os.getenv("USE_TRAINED_MODEL", "false").lower() == "true"
 
+# Always import HealthcareResponseEngine for fallback
+from healthcare_model import HealthcareResponseEngine
+
 # If engines not available, create a basic fallback
 if not ENGINES_AVAILABLE:
-    from healthcare_model import HealthcareResponseEngine
-
     class BasicHealthcareEngine:
         def __init__(self):
             self.response_engine = HealthcareResponseEngine()
