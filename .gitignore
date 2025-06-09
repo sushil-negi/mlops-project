@@ -206,3 +206,22 @@ data/*_training_data.json
 data/*_training_data.jsonl
 data/combined_*.json
 data/combined_*.jsonl
+
+# Model files (should be in MLflow model registry)
+*.pkl
+*.joblib
+*.h5
+*.pth
+*.model
+*.weights
+
+# Generated reports (recreated by CI/tests)
+*_report.json
+*_validation_report.json
+data_quality_report.json
+security_scan_results.json
+pipeline_run_info.json
+
+# Test data (can be generated or downloaded)
+data/test_*.json
+*/data/test_*.json
