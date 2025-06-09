@@ -31,9 +31,9 @@ async def lifespan(app: FastAPI):
     await database.connect()
     await init_db()
     logger.info("Model Registry Service started successfully")
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down Model Registry Service")
     await database.disconnect()
@@ -47,7 +47,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -70,9 +70,9 @@ async def http_exception_handler(request, exc):
             "error": {
                 "code": exc.status_code,
                 "message": exc.detail,
-                "type": "HTTPException"
+                "type": "HTTPException",
             }
-        }
+        },
     )
 
 
@@ -86,9 +86,9 @@ async def general_exception_handler(request, exc):
             "error": {
                 "code": 500,
                 "message": "Internal server error",
-                "type": "InternalServerError"
+                "type": "InternalServerError",
             }
-        }
+        },
     )
 
 
@@ -105,17 +105,17 @@ async def root():
         "service": "MLOps Model Registry",
         "version": "1.0.0",
         "status": "running",
-        "docs": "/docs"
+        "docs": "/docs",
     }
 
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "main:app",
         host=settings.HOST,
         port=settings.PORT,
         log_level=settings.LOG_LEVEL.lower(),
-        reload=settings.DEBUG
+        reload=settings.DEBUG,
     )
