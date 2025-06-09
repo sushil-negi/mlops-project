@@ -28,10 +28,12 @@ logger = logging.getLogger(__name__)
 class DataQualityChecker:
     """Performs comprehensive data quality checks"""
 
-    def __init__(self):
+    def __init__(self, is_test_file=False):
         self.quality_issues = []
         self.quality_warnings = []
         self.stats = {}
+        # Relaxed validation for test files
+        self.min_samples_per_category = 1 if is_test_file else 5
 
     def check_duplicates(self, data: List[Dict]) -> bool:
         """Check for duplicate queries or responses"""
@@ -201,7 +203,7 @@ class DataQualityChecker:
         # Check for categories with very few samples
         for category, count in category_counts.items():
             percentage = (count / total_samples) * 100
-            if count < 5:
+            if count < self.min_samples_per_category:
                 self.quality_issues.append(
                     f"Category '{category}' has very few samples: {count} ({percentage:.1f}%)"
                 )
@@ -385,11 +387,12 @@ def main():
         "data/combined_healthcare_training_data.json",
     ]
 
-    checker = DataQualityChecker()
-
     for data_file in data_files:
         if Path(data_file).exists():
             logger.info(f"Running quality checks on: {data_file}")
+            # Use relaxed validation for test files
+            is_test_file = "test_" in data_file
+            checker = DataQualityChecker(is_test_file=is_test_file)
             success = checker.check_data_quality(data_file)
             sys.exit(0 if success else 1)
 

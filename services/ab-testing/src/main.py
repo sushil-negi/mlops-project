@@ -19,10 +19,17 @@ from prometheus_client import Counter, Gauge, Histogram, generate_latest
 from prometheus_client.core import CollectorRegistry
 from pydantic import BaseModel, Field
 
-from .metrics import ExperimentMetrics
-from .models import Experiment, ExperimentConfig, ExperimentStatus, RoutingDecision
-from .safety_monitor import SafetyMonitor
-from .statistics import ABTestAnalyzer
+try:
+    from .metrics import ExperimentMetrics
+    from .models import Experiment, ExperimentConfig, ExperimentStatus, RoutingDecision
+    from .safety_monitor import SafetyMonitor
+    from .statistics import ABTestAnalyzer
+except ImportError:
+    # Fallback for when running as standalone script
+    from metrics import ExperimentMetrics
+    from models import Experiment, ExperimentConfig, ExperimentStatus, RoutingDecision
+    from safety_monitor import SafetyMonitor
+    from statistics import ABTestAnalyzer
 
 # Configure structured logging
 structlog.configure(

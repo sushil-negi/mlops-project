@@ -12,8 +12,12 @@ import redis.asyncio as redis
 import structlog
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
-from .models import ExperimentMetrics as ExperimentMetricsModel
-from .models import MetricSnapshot
+try:
+    from .models import ExperimentMetrics as ExperimentMetricsModel
+    from .models import MetricSnapshot
+except ImportError:
+    from models import ExperimentMetrics as ExperimentMetricsModel
+    from models import MetricSnapshot
 
 logger = structlog.get_logger()
 

@@ -11,7 +11,10 @@ from typing import Dict, List, Optional
 import httpx
 import structlog
 
-from .models import SafetyThresholds, SafetyViolation
+try:
+    from .models import SafetyThresholds, SafetyViolation
+except ImportError:
+    from models import SafetyThresholds, SafetyViolation
 
 logger = structlog.get_logger()
 
