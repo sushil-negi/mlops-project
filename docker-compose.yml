@@ -66,7 +66,7 @@ services:
       - MLFLOW_SYSTEM_METRICS_SAMPLING_INTERVAL=10
       - MLFLOW_SYSTEM_METRICS_SAMPLES_BEFORE_LOGGING=1
     ports:
-      - "5001:5000"
+      - "5050:5000"
     depends_on:
       postgres:
         condition: service_healthy

@@ -37,5 +37,4 @@ CMD mlflow server \
     --default-artifact-root ${MLFLOW_DEFAULT_ARTIFACT_ROOT} \
     --host 0.0.0.0 \
     --port 5000 \
-    --serve-artifacts \
-    --workers 2
+    --serve-artifacts
