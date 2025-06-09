@@ -38,30 +38,38 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install flake8 black isort bandit safety mypy pytest pytest-cov
+        if [ -f models/healthcare-ai/requirements.txt ]; then
+          pip install -r models/healthcare-ai/requirements.txt
+        fi
         if [ -f models/healthcare-ai-k8s/requirements.txt ]; then
           pip install -r models/healthcare-ai-k8s/requirements.txt
+        fi
+        if [ -f services/ab-testing/requirements.txt ]; then
+          pip install -r services/ab-testing/requirements.txt
         fi
 
     - name: Code formatting check (Black)
       run: |
-        black --check --diff models/ scripts/ tests/ || exit 1
+        black --check --diff models/ scripts/ tests/ services/ || exit 1
 
     - name: Import sorting check (isort)
       run: |
-        isort --check-only --diff models/ scripts/ tests/ || exit 1
+        isort --check-only --diff models/ scripts/ tests/ services/ || exit 1
 
     - name: Linting (flake8)
       run: |
-        flake8 models/ scripts/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 models/ scripts/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 models/ scripts/ tests/ services/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 models/ scripts/ tests/ services/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Type checking (mypy)
       run: |
+        mypy models/healthcare-ai/src/ --ignore-missing-imports || true
         mypy models/healthcare-ai-k8s/src/ --ignore-missing-imports || true
+        mypy services/ab-testing/src/ --ignore-missing-imports || true
 
     - name: Security scan (bandit)
       run: |
-        bandit -r models/ scripts/ --severity-level medium || true
+        bandit -r models/ scripts/ services/ --severity-level medium || true
 
     - name: Dependency vulnerability scan (safety)
       run: |
@@ -97,8 +105,14 @@ jobs:
         python -m pip install pytest pytest-cov pytest-mock
         # Install dependencies for unit tests
         python -m pip install scikit-learn==1.1.3 pandas==1.5.3 numpy==1.23.5 joblib==1.3.2
+        if [ -f models/healthcare-ai/requirements.txt ]; then
+          python -m pip install -r models/healthcare-ai/requirements.txt
+        fi
         if [ -f models/healthcare-ai-k8s/requirements.txt ]; then
           python -m pip install -r models/healthcare-ai-k8s/requirements.txt
+        fi
+        if [ -f services/ab-testing/requirements.txt ]; then
+          python -m pip install -r services/ab-testing/requirements.txt
         fi
         # Verify installations
         python -m pip list | grep pytest
@@ -133,7 +147,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install pytest pytest-cov pytest-mock
-        python -m pip install -r models/healthcare-ai-k8s/requirements.txt
+        python -m pip install -r models/healthcare-ai/requirements.txt
         python -m pip install scikit-learn pandas numpy joblib requests
 
     - name: Download test data
@@ -145,8 +159,8 @@ jobs:
 
     - name: Start healthcare AI service for e2e tests
       run: |
-        cd models/healthcare-ai-k8s
-        python src/k8s_service.py &
+        cd models/healthcare-ai
+        python service.py &
         sleep 10
 
     - name: Validate model performance
@@ -159,6 +173,19 @@ jobs:
       run: |
         python scripts/model_interaction_guide.py --validate-crisis-detection
         python scripts/test_mlops_pipeline.py --health-check
+
+    - name: Start A/B testing service for validation
+      run: |
+        cd services/ab-testing
+        # Start Redis for A/B testing
+        docker run -d --name redis-test -p 6379:6379 redis:7-alpine
+        sleep 5
+        # Start A/B testing service
+        REDIS_URL=redis://localhost:6379 python -m uvicorn src.main:app --host 0.0.0.0 --port 8090 &
+        sleep 10
+        # Test A/B service
+        curl -f http://localhost:8090/health || exit 1
+        curl -f http://localhost:8090/route/test-user-123 || exit 1
 
     - name: Model bias detection
       run: |
@@ -220,14 +247,14 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install pytest pytest-cov pytest-mock
-        python -m pip install -r models/healthcare-ai-k8s/requirements.txt
+        python -m pip install -r models/healthcare-ai/requirements.txt
         python -m pip install pytest-asyncio httpx
 
     - name: Start healthcare AI service
       run: |
-        cd models/healthcare-ai-k8s
+        cd models/healthcare-ai
         # Start service with error logging
-        python src/k8s_service.py > ../../service.log 2>&1 &
+        python service.py > ../../service.log 2>&1 &
         SERVICE_PID=$!
         echo "Started service with PID: $SERVICE_PID"
         sleep 15
@@ -290,11 +317,11 @@ jobs:
           type=sha,prefix={{branch}}-
           type=raw,value=latest,enable={{is_default_branch}}
 
-    - name: Build Docker image
+    - name: Build Healthcare AI Docker image
       uses: docker/build-push-action@v4
       with:
-        context: models/healthcare-ai-k8s
-        file: models/healthcare-ai-k8s/Dockerfile
+        context: models/healthcare-ai
+        file: models/healthcare-ai/Dockerfile
         push: false
         tags: healthcare-ai:latest
         labels: ${{ steps.meta.outputs.labels }}
@@ -302,19 +329,60 @@ jobs:
         cache-to: type=gha,mode=max
         load: true
 
-    - name: Run Trivy vulnerability scanner
+    - name: Build A/B Testing Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: services/ab-testing
+        file: services/ab-testing/Dockerfile
+        push: false
+        tags: ab-testing:latest
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        load: true
+
+    - name: Build MLflow Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: services/mlflow
+        file: services/mlflow/Dockerfile
+        push: false
+        tags: mlflow-server:latest
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        load: true
+
+    - name: Run Trivy vulnerability scanner on Healthcare AI
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: 'healthcare-ai:latest'
         format: 'sarif'
-        output: 'trivy-results.sarif'
+        output: 'trivy-healthcare-ai.sarif'
       continue-on-error: true
 
-    - name: Upload Trivy scan results
-      uses: github/codeql-action/upload-sarif@v3
-      if: always() && hashFiles('trivy-results.sarif') != ''
+    - name: Run Trivy vulnerability scanner on A/B Testing
+      uses: aquasecurity/trivy-action@master
       with:
-        sarif_file: 'trivy-results.sarif'
+        image-ref: 'ab-testing:latest'
+        format: 'sarif'
+        output: 'trivy-ab-testing.sarif'
+      continue-on-error: true
+
+    - name: Upload Healthcare AI Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always() && hashFiles('trivy-healthcare-ai.sarif') != ''
+      with:
+        sarif_file: 'trivy-healthcare-ai.sarif'
+        category: 'healthcare-ai-security'
+      continue-on-error: true
+
+    - name: Upload A/B Testing Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always() && hashFiles('trivy-ab-testing.sarif') != ''
+      with:
+        sarif_file: 'trivy-ab-testing.sarif'
+        category: 'ab-testing-security'
       continue-on-error: true
 
   deploy-staging:
@@ -347,8 +415,10 @@ jobs:
     - name: Deploy to staging
       run: |
         if [ -f $HOME/.kube/config ]; then
-          kubectl apply -f gitops/manifests/healthcare-ai-staging/
-          kubectl rollout status deployment/healthcare-ai-v2-deployment -n healthcare-ai-staging --timeout=300s
+          kubectl apply -f k8s/environments/staging/
+          kubectl rollout status deployment/healthcare-ai -n healthcare-ai-staging --timeout=300s
+          kubectl rollout status deployment/ab-testing -n healthcare-ai-staging --timeout=300s
+          kubectl rollout status deployment/mlflow -n healthcare-ai-staging --timeout=300s
         else
           echo "Kubernetes not configured, skipping deployment"
         fi
@@ -358,9 +428,13 @@ jobs:
       run: |
         if [ -f $HOME/.kube/config ]; then
           kubectl get pods -n healthcare-ai-staging
-          kubectl port-forward -n healthcare-ai-staging service/healthcare-ai-v2-service 8081:80 &
+          kubectl port-forward -n healthcare-ai-staging service/healthcare-ai 8081:8000 &
           sleep 10
           curl -f http://localhost:8081/health || exit 1
+          # Test A/B testing service
+          kubectl port-forward -n healthcare-ai-staging service/ab-testing 8082:8000 &
+          sleep 5
+          curl -f http://localhost:8082/health || exit 1
         else
           echo "Kubernetes not configured, skipping verification"
         fi
@@ -396,8 +470,10 @@ jobs:
     - name: Deploy to production
       run: |
         if [ -f $HOME/.kube/config ]; then
-          kubectl apply -f gitops/manifests/healthcare-ai-production/
-          kubectl rollout status deployment/healthcare-ai-v2-deployment -n healthcare-ai-production --timeout=300s
+          kubectl apply -f k8s/environments/production/staging/
+          kubectl rollout status deployment/healthcare-ai -n healthcare-ai-production --timeout=600s
+          kubectl rollout status deployment/ab-testing -n healthcare-ai-production --timeout=300s
+          kubectl rollout status deployment/mlflow -n healthcare-ai-production --timeout=300s
         else
           echo "Kubernetes not configured, skipping deployment"
         fi
@@ -415,9 +491,13 @@ jobs:
     - name: Health check production deployment
       run: |
         if [ -f $HOME/.kube/config ]; then
-          kubectl port-forward -n healthcare-ai-production service/healthcare-ai-v2-service 8082:80 &
+          kubectl port-forward -n healthcare-ai-production service/healthcare-ai 8083:8000 &
           sleep 10
-          curl -f http://localhost:8082/health || exit 1
+          curl -f http://localhost:8083/health || exit 1
+          # Test A/B testing service
+          kubectl port-forward -n healthcare-ai-production service/ab-testing 8084:8000 &
+          sleep 5
+          curl -f http://localhost:8084/health || exit 1
         else
           echo "Kubernetes not configured, skipping health check"
         fi
@@ -461,8 +541,10 @@ jobs:
       run: |
         if [ -f $HOME/.kube/config ]; then
           NAMESPACE=${{ github.ref == 'refs/heads/main' && 'healthcare-ai-production' || 'healthcare-ai-staging' }}
-          kubectl rollout undo deployment/healthcare-ai-v2-deployment -n $NAMESPACE
-          kubectl rollout status deployment/healthcare-ai-v2-deployment -n $NAMESPACE --timeout=300s
+          kubectl rollout undo deployment/healthcare-ai -n $NAMESPACE
+          kubectl rollout undo deployment/ab-testing -n $NAMESPACE
+          kubectl rollout undo deployment/mlflow -n $NAMESPACE
+          kubectl rollout status deployment/healthcare-ai -n $NAMESPACE --timeout=300s
         else
           echo "Kubernetes not configured, skipping rollback"
         fi
