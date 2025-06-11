@@ -1,8 +1,6 @@
 global:
   smtp_smarthost: 'localhost:587'
   smtp_from: 'alertmanager@healthcare-ai.local'
-  smtp_auth_username: ''
-  smtp_auth_password: ''
 
 route:
   group_by: ['alertname']
@@ -41,7 +39,7 @@ receivers:
 
 - name: 'critical-alerts'
   slack_configs:
-  - api_url: '${SLACK_WEBHOOK_URL}'
+  - api_url: 'http://localhost:9095/slack-webhook'
     channel: '#healthcare-ai-critical'
     title: '🚨 CRITICAL: Healthcare AI Alert'
     text: |
@@ -57,7 +55,7 @@ receivers:
 
 - name: 'crisis-alerts'
   slack_configs:
-  - api_url: '${SLACK_WEBHOOK_URL}'
+  - api_url: 'http://localhost:9095/slack-webhook'
     channel: '#healthcare-ai-crisis'
     title: '🚨 CRISIS RESPONSE DETECTED'
     text: |
@@ -72,21 +70,12 @@ receivers:
     send_resolved: false
   email_configs:
   - to: 'healthcare-ai-team@company.com'
-    subject: 'URGENT: Healthcare AI Crisis Response Triggered'
-    body: |
-      A crisis response was detected in the Healthcare AI system.
-      
-      Please ensure:
-      1. Crisis detection is functioning properly
-      2. Emergency resources are being provided correctly
-      3. System is stable and responsive
-      
-      Time: {{ .GroupLabels.timestamp }}
-      Environment: {{ .GroupLabels.environment }}
+    headers:
+      subject: 'URGENT: Healthcare AI Crisis Response Triggered'
 
 - name: 'performance-alerts'
   slack_configs:
-  - api_url: '${SLACK_WEBHOOK_URL}'
+  - api_url: 'http://localhost:9095/slack-webhook'
     channel: '#healthcare-ai-performance'
     title: '⚠️ Performance Issue'
     text: |
@@ -102,7 +91,7 @@ receivers:
 
 - name: 'model-alerts'
   slack_configs:
-  - api_url: '${SLACK_WEBHOOK_URL}'
+  - api_url: 'http://localhost:9095/slack-webhook'
     channel: '#healthcare-ai-models'
     title: '📊 Model Performance Alert'
     text: |

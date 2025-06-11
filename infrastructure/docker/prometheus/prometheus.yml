@@ -58,29 +58,29 @@ scrape_configs:
   # MLflow
   - job_name: 'mlflow'
     static_configs:
-      - targets: ['mlflow:5000']
+      - targets: ['host.docker.internal:5050', 'mlops-mlflow:5000']
     metrics_path: /metrics
     scrape_interval: 30s
 
   # Infrastructure services
   - job_name: 'postgres'
     static_configs:
-      - targets: ['postgres:5432']
+      - targets: ['host.docker.internal:5432', 'mlops-project-postgres-1:5432']
     scrape_interval: 30s
 
   - job_name: 'redis'
     static_configs:
-      - targets: ['redis:6379']
+      - targets: ['host.docker.internal:6379', 'mlops-project-redis-1:6379']
     scrape_interval: 30s
 
   - job_name: 'minio'
     static_configs:
-      - targets: ['minio:9000']
+      - targets: ['host.docker.internal:9000', 'mlops-project-minio-1:9000']
+    metrics_path: /minio/v2/metrics/cluster
     scrape_interval: 30s
 
 alerting:
   alertmanagers:
     - static_configs:
         - targets:
-          # Add alertmanager if needed
-          # - alertmanager:9093
+          - host.docker.internal:9093

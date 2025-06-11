@@ -1,0 +1,160 @@
+services:
+  # Simple Model Registry Mock
+  model-registry:
+    image: python:3.11-slim
+    container_name: mlops-model-registry
+    ports:
+      - "8001:8000"
+    command: |
+      sh -c "
+      pip install fastapi uvicorn redis psycopg2-binary boto3 prometheus-client &&
+      cat > /tmp/mock_service.py << 'EOF'
+      from fastapi import FastAPI
+      import json
+      
+      app = FastAPI(title='Model Registry 2.0', version='1.0.0')
+      
+      @app.get('/health')
+      def health():
+          return {'status': 'healthy', 'service': 'model-registry'}
+      
+      @app.get('/models')
+      def list_models():
+          return {'models': []}
+      
+      @app.get('/metrics')
+      def metrics():
+          return 'model_registry_models_total 0\n'
+      
+      EOF
+      uvicorn mock_service:app --host 0.0.0.0 --port 8000 --app-dir /tmp
+      "
+    environment:
+      - DATABASE_URL=postgresql://mlflow:mlflow123@mlops-project-postgres-1:5432/mlflow
+      - REDIS_URL=redis://mlops-project-redis-1:6379/1
+    networks:
+      - mlops-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Simple Pipeline Orchestrator Mock
+  pipeline-orchestrator:
+    image: python:3.11-slim
+    container_name: mlops-pipeline-orchestrator
+    ports:
+      - "8002:8000"
+    command: |
+      sh -c "
+      pip install fastapi uvicorn redis psycopg2-binary boto3 prometheus-client &&
+      cat > /tmp/mock_service.py << 'EOF'
+      from fastapi import FastAPI
+      
+      app = FastAPI(title='Pipeline Orchestrator 2.0', version='1.0.0')
+      
+      @app.get('/health')
+      def health():
+          return {'status': 'healthy', 'service': 'pipeline-orchestrator'}
+      
+      @app.get('/pipelines')
+      def list_pipelines():
+          return {'pipelines': []}
+      
+      @app.get('/metrics')
+      def metrics():
+          return 'pipeline_orchestrator_pipelines_total 0\n'
+      
+      EOF
+      uvicorn mock_service:app --host 0.0.0.0 --port 8000 --app-dir /tmp
+      "
+    networks:
+      - mlops-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Simple Feature Store Mock
+  feature-store:
+    image: python:3.11-slim
+    container_name: mlops-feature-store
+    ports:
+      - "8003:8000"
+    command: |
+      sh -c "
+      pip install fastapi uvicorn redis psycopg2-binary boto3 prometheus-client &&
+      cat > /tmp/mock_service.py << 'EOF'
+      from fastapi import FastAPI
+      
+      app = FastAPI(title='Feature Store 2.0', version='1.0.0')
+      
+      @app.get('/health')
+      def health():
+          return {'status': 'healthy', 'service': 'feature-store'}
+      
+      @app.get('/features')
+      def list_features():
+          return {'features': []}
+      
+      @app.get('/metrics')
+      def metrics():
+          return 'feature_store_features_total 0\n'
+      
+      EOF
+      uvicorn mock_service:app --host 0.0.0.0 --port 8000 --app-dir /tmp
+      "
+    networks:
+      - mlops-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Simple Experiment Tracking Mock
+  experiment-tracking:
+    image: python:3.11-slim
+    container_name: mlops-experiment-tracking
+    ports:
+      - "8004:8000"
+    command: |
+      sh -c "
+      pip install fastapi uvicorn redis psycopg2-binary boto3 prometheus-client &&
+      cat > /tmp/mock_service.py << 'EOF'
+      from fastapi import FastAPI
+      
+      app = FastAPI(title='Experiment Tracking 2.0', version='1.0.0')
+      
+      @app.get('/health')
+      def health():
+          return {'status': 'healthy', 'service': 'experiment-tracking'}
+      
+      @app.get('/experiments')
+      def list_experiments():
+          return {'experiments': []}
+      
+      @app.get('/metrics')
+      def metrics():
+          return 'experiment_tracking_experiments_total 0\n'
+      
+      EOF
+      uvicorn mock_service:app --host 0.0.0.0 --port 8000 --app-dir /tmp
+      "
+    networks:
+      - mlops-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  mlops-network:
+    external: true
