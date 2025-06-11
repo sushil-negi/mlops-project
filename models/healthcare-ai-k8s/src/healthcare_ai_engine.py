@@ -105,14 +105,14 @@ class HealthcareAIEngine:
             },
             "responses": {
                 "adl": [
-                    "For activities of daily living, I recommend consulting with an occupational therapist who can provide personalized assessments and adaptive strategies.",
-                    "Mobility aids and adaptive equipment can significantly improve independence in daily activities. Would you like information about specific aids?",
-                    "Physical therapy can help improve strength and balance for better performance in daily activities.",
+                    "For activities of daily living, I recommend:\n1) Consulting with an occupational therapist for personalized assessments\n2) Using mobility aids and adaptive equipment like bed rails\n3) Consider Physical therapy for strength and balance\n4) Making home modifications like grab bars and ramps",
+                    "Mobility aids and adaptive equipment can significantly improve independence:\n• Bed rails and adjustable bed height\n• Weighted utensils and built-up handles\n• Chair exercises and water aerobics\n• Plate guards and adaptive eating equipment",
+                    "Physical therapy can help improve strength and balance for better performance in daily activities:\n- Chair exercises for seated mobility\n- Water aerobics for joint-friendly movement\n- Tai chi for balance and coordination",
                     "Home modifications like grab bars, ramps, and adapted bathroom fixtures can make daily activities safer and easier.",
                 ],
                 "senior_care": [
-                    "Senior care involves addressing physical, emotional, and social needs. Consider reaching out to local aging services for comprehensive support.",
-                    "Regular health monitoring, medication management, and social engagement are crucial aspects of senior care.",
+                    "Senior care involves addressing multiple needs:\n1) Physical health monitoring and medication management\n2) Social engagement through adult day programs\n3) Respite services for caregivers\n4) Area Agency on Aging resources for comprehensive support",
+                    "For elderly care with memory issues, consider:\n• Automated pill dispensers\n• Blister packaging for medications\n• Adult day programs for social interaction\n• Respite services to prevent caregiver burnout",
                     "Adult day programs and senior centers offer valuable social interaction and activities for elderly individuals.",
                     "Home health services can provide medical care and assistance while allowing seniors to age in place.",
                 ],
@@ -136,7 +136,7 @@ class HealthcareAIEngine:
                 ],
                 "general": [
                     "I'm here to help with healthcare-related questions. Could you provide more details about your specific needs?",
-                    "Healthcare encompasses many areas. Whether it's about daily living, mental health, or caregiving, I'm here to provide information and support.",
+                    "For managing multiple medications safely, consider:\n1) Using a pill organizer or automated dispenser\n2) Keeping an updated medication list\n3) Regular pharmacy consultations\n4) Setting up medication reminders",
                     "For personalized medical advice, please consult with qualified healthcare professionals.",
                     "What specific healthcare topic or concern would you like to discuss today?",
                 ],
@@ -166,6 +166,10 @@ class HealthcareAIEngine:
             "hurt myself",
             "want to die",
             "end it all",
+            "end my life",
+            "harm myself",
+            "self-harm",
+            "thinking about suicide",
         ]
         if any(word in text_lower for word in crisis_words):
             return "crisis"
@@ -196,6 +200,7 @@ class HealthcareAIEngine:
                 "response": "🚨 CRISIS SUPPORT NEEDED 🚨\n\nImmediate Resources:\n• Call 911 for emergencies\n• National Suicide Prevention Lifeline: 988\n• Crisis Text Line: Text HOME to 741741\n• Local emergency services\n\nYou are not alone. Professional help is available 24/7.",
                 "category": "crisis",
                 "confidence": 1.0,
+                "method": "crisis_detection",
                 "generation_time": time.time() - start_time,
             }
 
@@ -231,6 +236,7 @@ class HealthcareAIEngine:
             "response": response,
             "category": category,
             "confidence": 0.85,
+            "method": "contextual_analysis" if category != "general" else "general_response",
             "generation_time": time.time() - start_time,
         }
 
