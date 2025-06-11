@@ -421,7 +421,7 @@ async def get_stats():
 
     # Get cache size from healthcare engine
     cache_size = 0
-    if hasattr(healthcare_engine, 'response_cache'):
+    if hasattr(healthcare_engine, "response_cache"):
         cache_size = len(healthcare_engine.response_cache)
 
     return {
@@ -433,7 +433,19 @@ async def get_stats():
         "engine_stats": engine_stats,
         "environment": os.getenv("ENVIRONMENT", "development"),
         "categories": 11,  # Add this field for e2e tests
-        "category_list": ["adl", "senior_care", "mental_health", "respite_care", "disabilities", "general", "crisis", "medication", "mobility", "nutrition", "social"],
+        "category_list": [
+            "adl",
+            "senior_care",
+            "mental_health",
+            "respite_care",
+            "disabilities",
+            "general",
+            "crisis",
+            "medication",
+            "mobility",
+            "nutrition",
+            "social",
+        ],
         "total_requests": engine_stats.get("total_requests", 0),
         "cache_size": cache_size,
     }

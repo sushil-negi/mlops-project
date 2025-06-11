@@ -236,7 +236,9 @@ class HealthcareAIEngine:
             "response": response,
             "category": category,
             "confidence": 0.85,
-            "method": "contextual_analysis" if category != "general" else "general_response",
+            "method": (
+                "contextual_analysis" if category != "general" else "general_response"
+            ),
             "generation_time": time.time() - start_time,
         }
 
