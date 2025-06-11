@@ -5,10 +5,10 @@ Health check endpoints for Experiment Tracking service
 import logging
 import time
 from typing import Any, Dict
-from fastapi import APIRouter
-from pydantic import BaseModel
 
 from core.config import get_settings
+from fastapi import APIRouter
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -17,6 +17,7 @@ settings = get_settings()
 
 class HealthResponse(BaseModel):
     """Health check response model"""
+
     status: str
     timestamp: float
     version: str
@@ -27,21 +28,21 @@ class HealthResponse(BaseModel):
 @router.get("/", response_model=HealthResponse)
 async def health_check():
     """Basic health check endpoint"""
-    
+
     # Check database connection
     db_healthy = True  # TODO: Implement actual DB check
-    
+
     # Check Redis connection
     redis_healthy = True  # TODO: Implement actual Redis check
-    
+
     # Check storage connection
     storage_healthy = True  # TODO: Implement actual storage check
-    
+
     # Check MLOps service connectivity
     model_registry_healthy = True  # TODO: Implement actual check
     pipeline_orchestrator_healthy = True  # TODO: Implement actual check
     feature_store_healthy = True  # TODO: Implement actual check
-    
+
     checks = {
         "database": {
             "status": "healthy" if db_healthy else "unhealthy",
@@ -69,16 +70,16 @@ async def health_check():
             "status": "healthy" if feature_store_healthy else "unhealthy",
             "url": settings.feature_store_url,
             "checked_at": time.time(),
-        }
+        },
     }
-    
+
     # Determine overall status
     overall_status = (
         "healthy"
         if all(check["status"] == "healthy" for check in checks.values())
         else "unhealthy"
     )
-    
+
     return HealthResponse(
         status=overall_status,
         timestamp=time.time(),
@@ -97,13 +98,13 @@ async def liveness_check():
 @router.get("/ready")
 async def readiness_check():
     """Kubernetes readiness probe endpoint"""
-    
+
     # Check if service is ready to handle requests
     db_healthy = True  # TODO: Implement actual check
-    
+
     if not db_healthy:
         return {"status": "not_ready", "reason": "database_unavailable"}
-    
+
     return {"status": "ready", "timestamp": time.time()}
 
 
@@ -117,35 +118,35 @@ async def service_info():
         "environment": settings.environment,
         "features": [
             "experiment_management",
-            "run_tracking", 
+            "run_tracking",
             "metric_logging",
             "hyperparameter_optimization",
             "visualization",
             "model_comparison",
-            "mlops_integration"
+            "mlops_integration",
         ],
         "integrations": [
             {
                 "service": "model-registry",
                 "url": settings.registry_service_url,
-                "description": "Model registration and management"
+                "description": "Model registration and management",
             },
             {
-                "service": "pipeline-orchestrator", 
+                "service": "pipeline-orchestrator",
                 "url": settings.pipeline_orchestrator_url,
-                "description": "Pipeline execution and orchestration"
+                "description": "Pipeline execution and orchestration",
             },
             {
                 "service": "feature-store",
                 "url": settings.feature_store_url,
-                "description": "Feature serving and management"
-            }
+                "description": "Feature serving and management",
+            },
         ],
         "configuration": {
             "max_concurrent_experiments": settings.max_concurrent_experiments,
             "max_runs_per_experiment": settings.max_runs_per_experiment,
             "enable_real_time_metrics": settings.enable_real_time_metrics,
             "enable_hpo": settings.enable_hpo,
-            "healthcare_validation": settings.enable_healthcare_validation
-        }
+            "healthcare_validation": settings.enable_healthcare_validation,
+        },
     }

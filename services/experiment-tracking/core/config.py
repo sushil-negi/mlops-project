@@ -4,111 +4,101 @@ Configuration management for Experiment Tracking service
 
 import os
 from typing import Optional
-from pydantic import Field, BaseModel
 
+from pydantic import BaseModel, Field
+
+# Type ignore for environments without pydantic-settings package
 try:
-    from pydantic_settings import BaseSettings
+    from pydantic_settings import BaseSettings  # type: ignore
 except ImportError:
     # Fallback implementation for CI/environments without pydantic-settings
-    class BaseSettings(BaseModel):
-        class Config:
-            env_file = ".env"
-            env_file_encoding = "utf-8"
+    BaseSettings = BaseModel
 
 
 class Settings(BaseSettings):
     """Application settings with environment variable support"""
-    
+
     # Application settings
     app_name: str = "experiment-tracking"
-    environment: str = Field(default="development", env="ENVIRONMENT")
-    debug: bool = Field(default=False, env="DEBUG")
-    host: str = Field(default="0.0.0.0", env="HOST")
-    port: int = Field(default=8003, env="PORT")
-    log_level: str = Field(default="INFO", env="LOG_LEVEL")
-    
+    environment: str = "development"
+    debug: bool = False
+    host: str = "0.0.0.0"
+    port: int = 8003
+    log_level: str = "INFO"
+
     # Database settings
-    database_url: str = Field(
-        default="postgresql://mlops:mlops123@localhost:5432/experiment_tracking",
-        env="DATABASE_URL"
-    )
-    database_pool_size: int = Field(default=20, env="DATABASE_POOL_SIZE")
-    database_max_overflow: int = Field(default=0, env="DATABASE_MAX_OVERFLOW")
-    
+    database_url: str = "postgresql://mlops:mlops123@localhost:5432/experiment_tracking"
+    database_pool_size: int = 20
+    database_max_overflow: int = 0
+
     # Redis settings (optional for caching)
-    redis_url: Optional[str] = Field(default="redis://localhost:6379", env="REDIS_URL")
-    redis_ttl: int = Field(default=3600, env="REDIS_TTL")  # 1 hour default
-    redis_enabled: bool = Field(default=True, env="REDIS_ENABLED")
-    
+    redis_url: Optional[str] = "redis://localhost:6379"
+    redis_ttl: int = 3600  # 1 hour default
+    redis_enabled: bool = True
+
     # Storage settings (MinIO/S3)
-    storage_backend: str = Field(default="minio", env="STORAGE_BACKEND")
-    minio_endpoint: str = Field(default="localhost:9000", env="MINIO_ENDPOINT")
-    minio_access_key: str = Field(default="minioadmin", env="MINIO_ACCESS_KEY")
-    minio_secret_key: str = Field(default="minioadmin", env="MINIO_SECRET_KEY")
-    minio_secure: bool = Field(default=False, env="MINIO_SECURE")
-    
+    storage_backend: str = "minio"
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = "minioadmin"
+    minio_secret_key: str = "minioadmin"
+    minio_secure: bool = False
+
     # Storage buckets
-    storage_bucket_experiments: str = Field(default="experiments", env="STORAGE_BUCKET_EXPERIMENTS")
-    storage_bucket_artifacts: str = Field(default="artifacts", env="STORAGE_BUCKET_ARTIFACTS")
-    storage_bucket_visualizations: str = Field(default="visualizations", env="STORAGE_BUCKET_VISUALIZATIONS")
-    
+    storage_bucket_experiments: str = "experiments"
+    storage_bucket_artifacts: str = "artifacts"
+    storage_bucket_visualizations: str = "visualizations"
+
     # MLOps service integration
-    registry_service_url: str = Field(default="http://localhost:8000", env="MODEL_REGISTRY_URL")
-    pipeline_orchestrator_url: str = Field(default="http://localhost:8001", env="PIPELINE_ORCHESTRATOR_URL")
-    feature_store_url: str = Field(default="http://localhost:8002", env="FEATURE_STORE_URL")
-    
+    registry_service_url: str = "http://localhost:8000"
+    pipeline_orchestrator_url: str = "http://localhost:8001"
+    feature_store_url: str = "http://localhost:8002"
+
     # Experiment settings
-    max_concurrent_experiments: int = Field(default=50, env="MAX_CONCURRENT_EXPERIMENTS")
-    max_runs_per_experiment: int = Field(default=1000, env="MAX_RUNS_PER_EXPERIMENT")
-    default_experiment_ttl_days: int = Field(default=365, env="DEFAULT_EXPERIMENT_TTL_DAYS")
-    
+    max_concurrent_experiments: int = 50
+    max_runs_per_experiment: int = 1000
+    default_experiment_ttl_days: int = 365
+
     # Metrics and logging
-    max_metrics_per_run: int = Field(default=10000, env="MAX_METRICS_PER_RUN")
-    metric_batch_size: int = Field(default=100, env="METRIC_BATCH_SIZE")
-    enable_real_time_metrics: bool = Field(default=True, env="ENABLE_REAL_TIME_METRICS")
-    
+    max_metrics_per_run: int = 10000
+    metric_batch_size: int = 100
+    enable_real_time_metrics: bool = True
+
     # Visualization settings
-    enable_real_time_plots: bool = Field(default=True, env="ENABLE_REAL_TIME_PLOTS")
-    plot_backend: str = Field(default="plotly", env="PLOT_BACKEND")  # plotly, matplotlib
-    max_concurrent_visualizations: int = Field(default=50, env="MAX_CONCURRENT_VISUALIZATIONS")
-    
+    enable_real_time_plots: bool = True
+    plot_backend: str = "plotly"  # plotly, matplotlib
+    max_concurrent_visualizations: int = 50
+
     # Security settings
-    secret_key: str = Field(
-        default="experiment-tracking-secret-key-change-in-production",
-        env="SECRET_KEY"
-    )
-    access_token_expire_minutes: int = Field(default=30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
-    api_key_header: str = Field(default="X-API-Key", env="API_KEY_HEADER")
-    
+    secret_key: str = "experiment-tracking-secret-key-change-in-production"
+    access_token_expire_minutes: int = 30
+    api_key_header: str = "X-API-Key"
+
     # Hyperparameter optimization
-    enable_hpo: bool = Field(default=True, env="ENABLE_HPO")
-    max_hpo_trials: int = Field(default=1000, env="MAX_HPO_TRIALS")
-    hpo_backend: str = Field(default="optuna", env="HPO_BACKEND")  # optuna, hyperopt
-    
+    enable_hpo: bool = True
+    max_hpo_trials: int = 1000
+    hpo_backend: str = "optuna"  # optuna, hyperopt
+
     # Resource limits
-    max_artifact_size_mb: int = Field(default=1000, env="MAX_ARTIFACT_SIZE_MB")  # 1GB
-    max_log_size_mb: int = Field(default=100, env="MAX_LOG_SIZE_MB")  # 100MB
-    
+    max_artifact_size_mb: int = 1000  # 1GB
+    max_log_size_mb: int = 100  # 100MB
+
     # Integration timeouts
-    service_timeout_seconds: int = Field(default=30, env="SERVICE_TIMEOUT_SECONDS")
-    registry_service_timeout: int = Field(default=10, env="MODEL_REGISTRY_TIMEOUT")
-    pipeline_orchestrator_timeout: int = Field(default=30, env="PIPELINE_ORCHESTRATOR_TIMEOUT")
-    feature_store_timeout: int = Field(default=5, env="FEATURE_STORE_TIMEOUT")
-    
+    service_timeout_seconds: int = 30
+    registry_service_timeout: int = 10
+    pipeline_orchestrator_timeout: int = 30
+    feature_store_timeout: int = 5
+
     # Monitoring and observability
-    enable_metrics: bool = Field(default=True, env="ENABLE_METRICS")
-    enable_tracing: bool = Field(default=True, env="ENABLE_TRACING")
-    metrics_port: int = Field(default=9003, env="METRICS_PORT")
-    
+    enable_metrics: bool = True
+    enable_tracing: bool = True
+    metrics_port: int = 9003
+
     # Healthcare-specific settings
-    enable_healthcare_validation: bool = Field(default=True, env="ENABLE_HEALTHCARE_VALIDATION")
-    required_healthcare_metrics: list = Field(
-        default=["accuracy", "crisis_detection_rate", "response_quality"],
-        env="REQUIRED_HEALTHCARE_METRICS"
-    )
-    min_crisis_detection_rate: float = Field(default=0.99, env="MIN_CRISIS_DETECTION_RATE")
-    min_response_quality_score: float = Field(default=0.8, env="MIN_RESPONSE_QUALITY_SCORE")
-    
+    enable_healthcare_validation: bool = True
+    required_healthcare_metrics: list = ["accuracy", "crisis_detection_rate", "response_quality"]
+    min_crisis_detection_rate: float = 0.99
+    min_response_quality_score: float = 0.8
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -136,6 +126,7 @@ def reload_settings() -> Settings:
 # Environment-specific configurations
 class DevelopmentSettings(Settings):
     """Development environment settings"""
+
     environment: str = "development"
     debug: bool = True
     log_level: str = "DEBUG"
@@ -143,14 +134,15 @@ class DevelopmentSettings(Settings):
 
 class ProductionSettings(Settings):
     """Production environment settings"""
+
     environment: str = "production"
     debug: bool = False
     log_level: str = "INFO"
-    
+
     # Production security
     minio_secure: bool = True
     redis_enabled: bool = True
-    
+
     # Production performance
     database_pool_size: int = 50
     max_concurrent_experiments: int = 200
@@ -159,10 +151,11 @@ class ProductionSettings(Settings):
 
 class TestingSettings(Settings):
     """Testing environment settings"""
+
     environment: str = "testing"
     debug: bool = True
     log_level: str = "DEBUG"
-    
+
     # Use in-memory databases for testing
     database_url: str = "sqlite:///:memory:"
     redis_enabled: bool = False
@@ -171,7 +164,7 @@ class TestingSettings(Settings):
 def get_environment_settings() -> Settings:
     """Get environment-specific settings"""
     env = os.getenv("ENVIRONMENT", "development").lower()
-    
+
     if env == "production":
         return ProductionSettings()
     elif env == "testing":
