@@ -95,7 +95,11 @@ class Settings(BaseSettings):
 
     # Healthcare-specific settings
     enable_healthcare_validation: bool = True
-    required_healthcare_metrics: list = ["accuracy", "crisis_detection_rate", "response_quality"]
+    required_healthcare_metrics: list = [
+        "accuracy",
+        "crisis_detection_rate",
+        "response_quality",
+    ]
     min_crisis_detection_rate: float = 0.99
     min_response_quality_score: float = 0.8
 

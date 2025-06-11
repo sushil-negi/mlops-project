@@ -258,5 +258,5 @@ async def create_project_from_template(
             template_data[key] = value
 
     # Create project with template data
-    template_project = ProjectCreate(**template_data)
+    template_project = ProjectCreate(**template_data)  # type: ignore
     return await create_project(template_project)

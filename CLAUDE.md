@@ -3,10 +3,11 @@
 ## Commit Message Guidelines
 
 - No marketing language in commit messages
-- Keep commit messages concise and descriptive
+- No Anthropic or Claude marketing/branding
+- Keep commit messages concise and descriptive - one line only
 - Focus on what was changed, not promotional language
 - Example: "Fix code formatting and CI/CD compliance across all MLOps services" (good)
-- Avoid: Marketing terms, emojis, or promotional language (bad)
+- Avoid: Marketing terms, emojis, promotional language, or AI tool branding (bad)
 
 ## Code Quality
 
@@ -22,8 +23,16 @@
 - Feature Store 2.0: Real-time feature management platform
 - Focus on enterprise-grade MLOps capabilities
 
-## Testing Requirements
+## Testing Requirements - Core Principle
 
-- All tests must pass before committing
+- ALL CI/ML pipeline tests must pass before committing
+- Run complete test suite until clean run achieved:
+  - Black code formatting
+  - isort import sorting
+  - mypy type checking
+  - End-to-end tests
+  - Integration tests
+  - Service architecture validation
+- No commits allowed until 100% test pass rate
 - 47 unit/integration tests currently passing
-- E2E tests available but may be skipped in CI
+- Experiment Tracking 2.0: All validation tests passing

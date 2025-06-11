@@ -353,5 +353,5 @@ async def create_experiment_from_template(
             template_data[key] = value
 
     # Create experiment with template data
-    template_experiment = ExperimentCreate(**template_data)
+    template_experiment = ExperimentCreate(**template_data)  # type: ignore
     return await create_experiment(template_experiment)
