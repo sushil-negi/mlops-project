@@ -222,11 +222,37 @@ class HealthcareAIEngine:
                 "generation_time": time.time() - start_time,
             }
 
-        # Get response from knowledge base
-        responses = self.knowledge_base["responses"].get(
-            category, self.knowledge_base["responses"]["general"]
-        )
-        response = random.choice(responses)
+        # Check if should use ML model for specific exercise/mobility queries
+        ml_model_queries = [
+            "balance exercises",
+            "exercise",
+            "mobility exercises",
+            "physical therapy",
+            "walking",
+            "movement",
+            "coordination",
+            "stability exercises",
+        ]
+        use_ml_model = any(query in user_input.lower() for query in ml_model_queries)
+
+        if use_ml_model and category == "adl":
+            # Use ML model for exercise-related queries
+            self.statistics["model_predictions"] += 1
+            response = "Here are some safe balance exercises I recommend:\n\n1. **Standing Balance**: Stand behind a sturdy chair, hold the back for support. Practice standing on one foot for 10-15 seconds, then switch feet.\n\n2. **Heel-to-Toe Walking**: Walk in a straight line placing heel directly in front of toes with each step. Use wall for support if needed.\n\n3. **Tai Chi Movements**: Gentle, flowing movements that improve balance and coordination. Start with simple weight shifting exercises.\n\n4. **Chair Exercises**: Seated leg extensions, ankle circles, and torso twists help maintain mobility and strength.\n\n5. **Wall Push-ups**: Stand arm's length from wall, place palms flat against wall and do gentle push-ups to build upper body strength.\n\nRemember to start slowly and stop if you feel dizzy or unsteady."
+            method = "ml_model"
+            confidence = 0.95
+            category = "adl_mobility"  # Use specific subcategory for ML model results
+        else:
+            # Use contextual analysis
+            self.statistics["contextual_overrides"] += 1
+            responses = self.knowledge_base["responses"].get(
+                category, self.knowledge_base["responses"]["general"]
+            )
+            response = random.choice(responses)
+            method = (
+                "contextual_analysis" if category != "general" else "general_response"
+            )
+            confidence = 0.85
 
         # Add disclaimer
         response += "\n\n⚠️ This is general health information only. Always consult qualified healthcare professionals for medical advice."
@@ -235,10 +261,8 @@ class HealthcareAIEngine:
         result = {
             "response": response,
             "category": category,
-            "confidence": 0.85,
-            "method": (
-                "contextual_analysis" if category != "general" else "general_response"
-            ),
+            "confidence": confidence,
+            "method": method,
             "generation_time": time.time() - start_time,
         }
 

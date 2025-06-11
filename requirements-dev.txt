@@ -1,0 +1,27 @@
+# Development Tools - EXACT VERSIONS matching CI/CD pipeline
+# These versions MUST match .github/workflows/ci-cd.yml exactly
+
+# Code Quality & Formatting
+black==25.1.0
+isort==6.0.1
+flake8==7.0.0
+
+# Security & Vulnerability Scanning
+bandit==1.7.5
+safety==3.0.1
+
+# Type Checking
+mypy==1.8.0
+
+# Testing Framework
+pytest==7.4.3
+pytest-cov==4.1.0
+
+# Additional development utilities
+pre-commit==3.6.0
+
+# Note: These versions are kept in sync with:
+# - .github/workflows/ci-cd.yml (line 40: pip install command)
+# - .claude/CLAUDE.md (Environment & Tool Versions section)
+# 
+# Update all three locations when changing versions!
